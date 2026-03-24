@@ -1,0 +1,99 @@
+# =============================================================================
+# SecFlow Helm Chart - 部署说明
+# =============================================================================
+
+感谢安装 SecFlow Helm Chart!
+
+## 部署
+
+```bash
+# 添加仓库
+helm repo add secflow https://charts.secflow.io
+
+# 更新依赖
+helm dependency build
+
+# 安装
+helm install secflow ./secflow -n secflow --create-namespace
+
+# 使用外部数据库
+helm install secflow ./secflow -n secflow \
+  --set mongodb.enabled=false \
+  --set redis.enabled=false \
+  --set server.config.mongodb.host=your-mongodb-host
+```
+
+## 配置
+
+主要配置项:
+
+```yaml
+# 服务器
+server:
+  replicaCount: 2
+  image:
+    repository: secflow/server
+    tag: latest
+
+# 客户端
+client:
+  enabled: true
+  replicaCount: 3
+
+# MongoDB (可选)
+mongodb:
+  enabled: true
+  persistence:
+    size: 20Gi
+
+# Redis (可选)
+redis:
+  enabled: true
+```
+
+## 访问
+
+部署后，可以通过以下方式访问:
+
+```bash
+# 获取 Ingress IP
+kubectl get ingress -n secflow
+
+# 或通过 Service 访问
+kubectl port-forward -n secflow svc/secflow-server 8080:8080
+```
+
+## 验证
+
+```bash
+# 检查 Pod 状态
+kubectl get pods -n secflow
+
+# 查看日志
+kubectl logs -n secflow -l app.kubernetes.io/component=server
+
+# 运行健康检查
+kubectl exec -n secflow deploy/secflow-server -- ./secflow-server healthcheck
+```
+
+## 升级
+
+```bash
+# 升级到新版本
+helm upgrade secflow ./secflow -n secflow
+
+# 回滚
+helm rollback secflow -n secflow
+```
+
+## 卸载
+
+```bash
+# 卸载
+helm uninstall secflow -n secflow
+```
+
+## 更多信息
+
+- 文档: https://docs.secflow.io
+- 问题反馈: https://github.com/secflow/secflow/issues

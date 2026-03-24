@@ -1,0 +1,42 @@
+# =============================================================================
+# SecFlow Helm Chart
+# 
+# 用于 Kubernetes 部署的 Helm Chart
+# =============================================================================
+
+apiVersion: v2
+name: secflow
+description: SecFlow - Distributed Security Information Flow Platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - security
+  - vulnerability
+  - crawler
+  - monitoring
+  - secflow
+maintainers:
+  - name: SecFlow Team
+    email: dev@secflow.local
+sources:
+  - https://github.com/secflow/secflow
+
+# 依赖
+dependencies:
+  - name: mongodb
+    version: "14.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mongodb.enabled
+  - name: redis
+    version: "18.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+
+# Kubernetes 版本兼容性
+kubeVersion: ">=1.23.0-0"
+
+# 注释
+annotations:
+  category: Security
+  license: MIT

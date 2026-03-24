@@ -1,0 +1,52 @@
+# =============================================================================
+# SecFlow ConfigMap
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "secflow.fullname" . }}-config
+  labels:
+    {{- include "secflow.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    # SecFlow Server Configuration
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      mode: release
+    
+    # MongoDB
+    mongodb:
+      {{- if .Values.mongodb.enabled }}
+      host: "{{ .Release.Name }}-mongodb"
+      port: 27017
+      {{- else }}
+      host: {{ .Values.server.config.mongodb.host }}
+      port: {{ .Values.server.config.mongodb.port | default 27017 }}
+      {{- end }}
+      database: {{ .Values.server.config.mongodb.database | default "secflow" }}
+    
+    # Redis
+    redis:
+      {{- if .Values.redis.enabled }}
+      host: "{{ .Release.Name }}-redis-master"
+      port: 6379
+      {{- else }}
+      host: {{ .Values.server.config.redis.host }}
+      port: {{ .Values.server.config.redis.port | default 6379 }}
+      {{- end }}
+    
+    # JWT
+    jwt:
+      secret: ""  # Set via SECFLOW_JWT_SECRET env
+      expire: {{ .Values.server.config.jwt.expire | default "72h" }}
+    
+    # Scheduler
+    scheduler:
+      enabled: true
+      interval: 30m
+    
+    # Log
+    log:
+      level: {{ .Values.server.config.log.level | default "info" }}
+      format: {{ .Values.server.config.log.format | default "json" }}

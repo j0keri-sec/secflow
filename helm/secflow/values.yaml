@@ -1,0 +1,258 @@
+# =============================================================================
+# SecFlow Helm Chart - Values
+# 
+# 默认配置值
+# =============================================================================
+
+# 全局设置
+global:
+  imagePullSecrets: []
+  storageClass: ""
+
+# SecFlow Server 配置
+server:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: secflow/server
+    pullPolicy: IfNotPresent
+    tag: latest
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    hosts:
+      - host: secflow.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: secflow-tls
+        hosts:
+          - secflow.example.com
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  config:
+    # MongoDB 连接
+    mongodb:
+      host: "mongodb:27017"
+      database: "secflow"
+      username: ""
+      password: ""
+    
+    # Redis 连接
+    redis:
+      host: "redis:6379"
+      password: ""
+    
+    # JWT 配置
+    jwt:
+      secret: "change-me-in-production"
+      expire: 72h
+    
+    # 日志级别
+    log:
+      level: info
+      format: json
+  
+  # 健康检查
+  livenessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  
+  # 启动探针 (允许启动时间较长)
+  startupProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
+# SecFlow Client 配置
+client:
+  enabled: true
+  replicaCount: 3
+  
+  image:
+    repository: secflow/client
+    pullPolicy: IfNotPresent
+    tag: latest
+  
+  # 客户端资源配置
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  # 客户端配置
+  config:
+    server:
+      apiUrl: "http://secflow-server:8080"
+      wsUrl: "ws://secflow-server:8080/api/v1/ws"
+    
+    # 数据源配置
+    sources:
+      enabled:
+        - avd-rod
+        - seebug-rod
+        - nvd-rod
+        - cve-rod
+        - ti-rod
+    
+    # 爬取限制
+    crawl:
+      pageLimit: 5
+      concurrency: 3
+    
+    # 代理配置 (可选)
+    proxy:
+      enabled: false
+      url: ""
+
+# MongoDB 配置 (可选，使用外部)
+mongodb:
+  enabled: true
+  architecture: replicaset
+  
+  auth:
+    enabled: true
+    username: secflow
+    password: "change-me"
+    database: secflow
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Redis 配置 (可选，使用外部)
+redis:
+  enabled: true
+  
+  auth:
+    enabled: false
+    password: ""
+  
+  architecture: replication
+  
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# Prometheus 配置 (用于监控)
+prometheus:
+  enabled: false
+  
+  server:
+    retention: 15d
+  
+  alertmanager:
+    enabled: false
+
+# Grafana 配置 (用于可视化)
+grafana:
+  enabled: false
+  
+  adminPassword: "change-me"
+
+# 网络策略
+networkPolicy:
+  enabled: true
+  
+  # 允许入口流量
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: production
+      ports:
+        - port: 8080
+  
+  # 允许到 MongoDB 和 Redis 的流量
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mongodb
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - port: 27017
+        - port: 6379
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# 滚动更新策略
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# 服务账户
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}

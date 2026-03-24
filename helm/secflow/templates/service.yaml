@@ -1,0 +1,47 @@
+# =============================================================================
+# SecFlow Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "secflow.fullname" . }}-server
+  labels:
+    {{- include "secflow.labels" . | nindent 4 }}
+  {{- with .Values.server.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.server.service.type }}
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "secflow.selectorLabels" . | nindent 4 }}
+    component: server
+---
+# =============================================================================
+# SecFlow Client Service (headless for WebSocket)
+# =============================================================================
+{{- if .Values.client.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "secflow.fullname" . }}-client
+  labels:
+    {{- include "secflow.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: "true"
+spec:
+  clusterIP: None
+  ports:
+    - port: 9091
+      targetPort: 9091
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "secflow.selectorLabels" . | nindent 4 }}
+    component: client
+{{- end }}
