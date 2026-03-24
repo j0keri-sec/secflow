@@ -1,0 +1,51 @@
+db_path: /Users/j0ker/Desktop/coder/secflow/secflow-client/secflow_client.db
+grabber:
+    disabled_sources:
+        - cnvd-rod
+        - cnnvd-rod
+        - nsfocus-rod
+        - qianxin-rod
+        - antiy-rod
+        - dbappsecurity-rod
+        - nox-rod
+        - venustech-rod
+    request_timeout: 30s
+    retry_attempts: 3
+    retry_interval: 5s
+    sources:
+        - avd-rod
+        - seebug-rod
+        - ti-rod
+        - kev-rod
+        - struts2-rod
+        - oscs-rod
+        - chaitin-rod
+        - threatbook-rod
+    tls_verify: true
+    user_agent: SecFlow-Client/1.0
+log_level: debug
+log_path: secflow.log
+mode: node
+server:
+    url: "ws://127.0.0.1:8080/ws/node"
+    token: "secflow-node-token-2026"
+name: secflow-node-test
+node_id: 8fd65d0f-c14b-455c-9b42-3a1990710cec
+proxy: ""
+scheduler:
+    enabled: false
+    interval: 1h
+    sources:
+        - avd-rod
+        - seebug-rod
+        - ti-rod
+        - kev-rod
+        - struts2-rod
+        - oscs-rod
+        - chaitin-rod
+        - threatbook-rod
+task:
+    default_page_limit: 1
+    enable_github_search: false
+    max_concurrent: 1
+    timeout: 30m

@@ -1,0 +1,5 @@
+新密码: admin123
+BCrypt哈希: $2a$10$P9QIFoAQUr6nKgpNyfqXPuzhx7wMmM9NJ7e1V15BDn6iJlskN8ZEW
+
+在MongoDB中执行以下命令:
+db.users.updateOne({username: 'admin'}, {$set: {password_hash: '$2a$10$P9QIFoAQUr6nKgpNyfqXPuzhx7wMmM9NJ7e1V15BDn6iJlskN8ZEW'}})

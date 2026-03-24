@@ -1,0 +1,112 @@
+# SecFlow Client Configuration
+# Copy this file to client.yaml and fill in your values.
+
+# =============================================================================
+# Server Connection Settings
+# =============================================================================
+server:
+  # HTTP API base URL of the SecFlow server
+  api_url: "http://127.0.0.1:8080/api/v1"
+
+  # WebSocket endpoint for node communication
+  ws_url: "ws://127.0.0.1:8080/api/v1/ws/node"
+
+  # JWT token issued by the server (register the node via the web UI first)
+  token: ""
+
+# =============================================================================
+# Node Identity
+# =============================================================================
+# Node ID - unique identifier for this node (auto-generated if empty)
+node_id: "node-01"
+
+# Node display name - appears in the server UI
+name: "My Crawl Node"
+
+# =============================================================================
+# Logging Settings
+# =============================================================================
+# Log level: debug, info, warn, error (default: info)
+log_level: "info"
+
+# Log file path (leave empty to log to stderr only)
+log_path: "secflow_client.log"
+
+# =============================================================================
+# Database Settings
+# =============================================================================
+# Local SQLite database path (relative to CWD or absolute)
+db_path: "secflow_client.db"
+
+# =============================================================================
+# Connection Settings
+# =============================================================================
+connection:
+  # Reconnect interval when connection is lost (default: 5s)
+  reconnect_interval: 5s
+  
+  # Connection timeout (default: 10s)
+  timeout: 10s
+  
+  # Enable auto reconnect (default: true)
+  auto_reconnect: true
+  
+  # Max reconnect attempts, 0 means unlimited (default: 0)
+  max_reconnect_attempts: 0
+
+# =============================================================================
+# Heartbeat Settings
+# =============================================================================
+# Heartbeat interval (Go duration string)
+heartbeat_interval: "30s"
+
+# =============================================================================
+# Task Execution Settings
+# =============================================================================
+task:
+  # Default page limit for grabbers (default: 1)
+  default_page_limit: 1
+  
+  # Max concurrent tasks (default: 1)
+  max_concurrent: 1
+  
+  # Task timeout (default: 30m)
+  timeout: 30m
+  
+  # Enable GitHub search for CVE (default: false)
+  enable_github_search: false
+
+# =============================================================================
+# Grabber Settings
+# =============================================================================
+grabber:
+  # Request timeout for HTTP requests (default: 30s)
+  request_timeout: 30s
+  
+  # Retry attempts for failed requests (default: 3)
+  retry_attempts: 3
+  
+  # Retry interval (default: 5s)
+  retry_interval: 5s
+  
+  # User agent string
+  user_agent: "SecFlow-Client/1.0"
+  
+  # Enable TLS verification (default: true)
+  tls_verify: true
+  
+  # Sources to enable (empty means all)
+  # sources:
+  #   - avd
+  #   - chaitin
+  #   - oscs
+  
+  # Sources to disable
+  # disabled_sources:
+  #   - seebug
+
+# =============================================================================
+# Proxy Settings
+# =============================================================================
+# Optional HTTP proxy for all crawlers (e.g. "http://127.0.0.1:7890")
+proxy: ""

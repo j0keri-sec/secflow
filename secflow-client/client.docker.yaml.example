@@ -1,0 +1,30 @@
+# ================================================
+# SecFlow Client Docker 配置示例
+# ================================================
+
+# 服务连接配置 (使用 Docker 网络主机名)
+server:
+  api_url: http://server:8080/api/v1
+  ws_url: ws://server:8080/api/v1/ws/node
+  token_key: ${NODE_TOKEN_KEY}
+
+# 节点配置
+mode: server
+name: docker-node-01
+node_id: ""
+
+# 日志配置
+log_level: info
+log_path: /app/logs
+
+# 数据库配置
+db_path: /app/data/secflow.db
+
+# 心跳间隔
+heartbeat_interval: 30s
+
+# 代理配置 (可选)
+# proxy: http://proxy:8080
+
+# 启用的爬虫源 (空 = 全部启用)
+sources: []

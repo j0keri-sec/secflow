@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API 测试</title>
+</head>
+<body>
+  <h1>API 登录测试</h1>
+  <button onclick="testLogin()">测试登录</button>
+  <div id="result"></div>
+
+  <script>
+    async function testLogin() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p>正在测试登录...</p>';
+
+      try {
+        const response = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: 'admin',
+            password: 'admin123'
+          })
+        });
+
+        const data = await response.json();
+        
+        resultDiv.innerHTML = `
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+          <p>状态: ${response.status}</p>
+          ${data.code === 0 ? '<p style="color: green">登录成功!</p>' : '<p style="color: red">登录失败!</p>'}
+        `;
+
+        if (data.code === 0) {
+          localStorage.setItem('token', data.data.token);
+          localStorage.setItem('user', JSON.stringify(data.data.user));
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<p style="color: red">错误: ${error.message}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>

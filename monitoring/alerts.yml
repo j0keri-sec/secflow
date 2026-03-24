@@ -1,0 +1,171 @@
+groups:
+  - name: secflow-alerts
+    interval: 30s
+    rules:
+      # ── 服务可用性告警 ───────────────────────────────────────────────────────
+      - alert: SecFlowServerDown
+        expr: up{job="secflow-server"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: server
+        annotations:
+          summary: "SecFlow Server 服务宕机"
+          description: "SecFlow Server 已连续 1 分钟无响应"
+
+      - alert: SecFlowClientDown
+        expr: up{job="secflow-clients"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: client
+        annotations:
+          summary: "SecFlow Client 节点离线"
+          description: "Client 节点 {{ $labels.instance }} 已连续 5 分钟无响应"
+
+      # ── 数据库告警 ───────────────────────────────────────────────────────────
+      - alert: MongoDBDown
+        expr: up{job="mongodb"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "MongoDB 服务宕机"
+          description: "MongoDB 已连续 1 分钟无响应"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: cache
+        annotations:
+          summary: "Redis 服务宕机"
+          description: "Redis 已连续 1 分钟无响应"
+
+      # ── 性能告警 ─────────────────────────────────────────────────────────────
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(secflow_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(secflow_http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: server
+        annotations:
+          summary: "HTTP 错误率过高"
+          description: "过去 5 分钟 HTTP 5xx 错误率超过 5%"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum(rate(secflow_http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: server
+        annotations:
+          summary: "API 响应延迟过高"
+          description: "P95 响应延迟超过 1 秒"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: server
+        annotations:
+          summary: "CPU 使用率过高"
+          description: "{{ $labels.instance }} CPU 使用率超过 80%"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: server
+        annotations:
+          summary: "内存使用率过高"
+          description: "{{ $labels.instance }} 内存使用率超过 85%"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+          service: storage
+        annotations:
+          summary: "磁盘空间不足"
+          description: "{{ $labels.instance }} 磁盘可用空间低于 10%"
+
+      # ── 业务告警 ─────────────────────────────────────────────────────────────
+      - alert: TaskQueueBacklog
+        expr: secflow_task_queue_size > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: task
+        annotations:
+          summary: "任务队列积压"
+          description: "任务队列中有超过 100 个待处理任务"
+
+      - alert: NoVulnUpdates
+        expr: |
+          (
+            time() - secflow_last_vuln_update_timestamp
+          ) / 3600 > 2
+        for: 10m
+        labels:
+          severity: warning
+          service: crawler
+        annotations:
+          summary: "漏洞数据长时间未更新"
+          description: "超过 2 小时没有新的漏洞数据"
+
+      - alert: CrawlerFailureRate
+        expr: |
+          (
+            sum(rate(secflow_crawl_failures_total[1h]))
+            /
+            sum(rate(secflow_crawl_attempts_total[1h]))
+          ) > 0.3
+        for: 15m
+        labels:
+          severity: warning
+          service: crawler
+        annotations:
+          summary: "爬虫失败率过高"
+          description: "过去 1 小时爬虫失败率超过 30%"
+
+      - alert: WebSocketConnectionsLow
+        expr: secflow_websocket_connections < 1
+        for: 5m
+        labels:
+          severity: warning
+          service: websocket
+        annotations:
+          summary: "WebSocket 连接数异常"
+          description: "当前没有活跃的 WebSocket 客户端连接"
+
+      # ── 安全告警 ─────────────────────────────────────────────────────────────
+      - alert: HighLoginFailures
+        expr: rate(secflow_login_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "登录失败率异常"
+          description: "过去 5 分钟登录失败次数异常"
+
+      - alert: SuspiciousAPIAccess
+        expr: rate(secflow_api_unauthorized_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "可疑 API 访问"
+          description: "过去 5 分钟未授权 API 访问次数超过 10 次"

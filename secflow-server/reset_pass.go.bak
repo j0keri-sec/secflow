@@ -1,0 +1,26 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	
+	"golang.org/x/crypto/bcrypt"
+)
+
+func main() {
+	// 新的管理员密码
+	newPassword := "admin123"
+	
+	// 生成bcrypt哈希
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	fmt.Printf("新密码: %s\n", newPassword)
+	fmt.Printf("BCrypt哈希: %s\n", string(hash))
+	
+	// 更新MongoDB中的密码哈希
+	fmt.Println("\n在MongoDB中执行以下命令:")
+	fmt.Printf("db.users.updateOne({username: 'admin'}, {$set: {password_hash: '%s'}})\n", string(hash))
+}

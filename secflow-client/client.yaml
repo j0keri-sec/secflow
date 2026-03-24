@@ -1,0 +1,35 @@
+# SecFlow Client Configuration
+server:
+  api_url: "http://127.0.0.1:8080/api/v1"
+  ws_url: "ws://127.0.0.1:8080/api/v1/ws/node"
+  token_key: "secflow-node-token-2026"
+
+node_id: "8fd65d0f-c14b-455c-9b42-3a1990710cec"
+name: "secflow-node-test"
+
+log_level: "debug"
+log_path: "secflow_client.log"
+db_path: "./secflow_client.db"
+
+connection:
+  reconnect_interval: 5s
+  timeout: 10s
+  auto_reconnect: true
+  max_reconnect_attempts: 0
+
+heartbeat_interval: "30s"
+
+task:
+  default_page_limit: 1
+  max_concurrent: 1
+  timeout: 30m
+  enable_github_search: false
+
+grabber:
+  request_timeout: 30s
+  retry_attempts: 3
+  retry_interval: 5s
+  user_agent: "SecFlow-Client/1.0"
+  tls_verify: true
+
+proxy: ""

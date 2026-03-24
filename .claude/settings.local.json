@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "Bash(cp .env.example .env)",
+      "Bash(docker-compose up:*)",
+      "Bash(go version:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker network:*)",
+      "Bash(docker run:*)",
+      "Bash(docker exec:*)",
+      "Bash(ls -la /Users/j0ker/Desktop/coder/secflow/secflow-client/log/article_*.txt)",
+      "Bash(go doc:*)",
+      "Bash(ls -t /Users/j0ker/Desktop/coder/secflow/secflow-client/log/article_1_*.txt)",
+      "Bash(ls -la /Users/j0ker/Desktop/coder/secflow/secflow-client/log/article_*.txt /Users/j0ker/Desktop/coder/secflow/secflow-client/log/articles_*.json)",
+      "Bash(ls -la log/venustech_1_20260322_2154*.txt)",
+      "Bash(curl -s -I \"https://www.venustech.com.cn/new_type/aqjx/\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/122.0.0.0 Safari/537.36\" -H \"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\" -H \"Accept-Language: zh-CN,zh;q=0.9,en;q=0.8\" -H \"Referer: https://www.venustech.com.cn/\")",
+      "Bash(curl -s \"https://www.venustech.com.cn/new_type/aqjx/\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/122.0.0.0 Safari/537.36\" -H \"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\" -H \"Accept-Language: zh-CN,zh;q=0.9,en;q=0.8\" -H \"Accept-Encoding: gzip, deflate, br\" -H \"Connection: keep-alive\" -H \"Upgrade-Insecure-Requests: 1\" -H \"Sec-Fetch-Dest: document\" -H \"Sec-Fetch-Mode: navigate\" -H \"Sec-Fetch-Site: none\" -H \"Sec-Fetch-User: ?1\" -H \"Cache-Control: max-age=0\" -H \"Referer: https://www.venustech.com.cn/\" -H \"sec-ch-ua: \"\"Chromium\"\";v=\"\"122\"\", \"\"Not\\(A:Brand\"\";v=\"\"24\"\", \"\"Google Chrome\"\";v=\"\"122\"\"\" -H \"sec-ch-ua-mobile: ?0\" -H \"sec-ch-ua-platform: \"\"Windows\"\"\" -H \"sec-ch-ua-platform-version: \"\"15.0.0\"\"\" -w \"\\\\n\\\\nHTTP Status: %{http_code}\\\\n\")",
+      "Bash(docker compose:*)",
+      "Bash(SECFLOW_MONGO_URI=\"mongodb://secflow:secflow_pass_secure_2026@127.0.0.1:27017/secflow?authSource=admin\" SECFLOW_REDIS_URL=\"redis://:redis_pass_secure_2026@127.0.0.1:6379/0\" SECFLOW_JWT_SECRET=\"your-super-secret-jwt-key-change-this-in-production-min-32-chars\" SECFLOW_PORT=8080 SECFLOW_LOG_LEVEL=debug SECFLOW_ENV=development ./secflow-server)",
+      "Bash(mongosh \"mongodb://secflow:secflow_pass_secure_2026@127.0.0.1:27017/secflow?authSource=admin\" --eval 'db.users.dropIndexes\\(\\);')",
+      "Bash(curl -s http://127.0.0.1:8080/api/v1/)",
+      "Bash(curl -s http://127.0.0.1:8080/)",
+      "Bash(curl -s http://127.0.0.1:5173/)",
+      "Bash(SECFLOW_API_URL=\"http://127.0.0.1:8080/api/v1\" SECFLOW_WS_URL=\"ws://127.0.0.1:8080/api/v1/ws/node\" SECFLOW_NODE_NAME=\"test-node\" SECFLOW_NODE_REGION=\"local\" SECFLOW_LOG_LEVEL=debug ./secflow-client)",
+      "Bash(ls -la /Users/j0ker/Desktop/coder/secflow/secflow-client/*.log)",
+      "Bash(curl -s http://127.0.0.1:8080/api/v1/nodes)",
+      "Bash(python3 -c \"import bcrypt; print\\(bcrypt.hashpw\\(b''admin123'', bcrypt.gensalt\\(\\)\\).decode\\(\\)\\)\")",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -c \"import bcrypt; print\\(bcrypt.hashpw\\(b''''admin123'''', bcrypt.gensalt\\(\\)\\).decode\\(\\)\\)\")",
+      "Bash(python3 -c \"import bcrypt; h = bcrypt.hashpw\\(b''admin123'', bcrypt.gensalt\\(rounds=10\\)\\); print\\(h.decode\\(\\)\\)\")",
+      "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjliZmY5YWI1ZjljNmMyOTM3OWMyOGVlIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NDQ0ODU0MSwiaWF0IjoxNzc0MTg5MzQxfQ.Vi1eRfX4D9q5zfrGiesKaM3ngglLEnAVCcm01lURLjw)",
+      "Bash(curl -s http://127.0.0.1:8080/api/v1/nodes -H 'Authorization: Bearer $TOKEN')",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/articles?page=1&page_size=5\" -H 'Authorization: Bearer $TOKEN')",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/vulns?page=1&page_size=5\" -H 'Authorization: Bearer $TOKEN')",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/tasks?page=1&page_size=5\" -H 'Authorization: Bearer $TOKEN')",
+      "Bash(curl -s http://127.0.0.1:8080/api/v1/nodes/69bffa6bd2b768ee037694c3 -H 'Authorization: Bearer $TOKEN')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/stats\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(pkill -f secflow-client)",
+      "Bash(kill -9 53856 53853)",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/vulns?page=1&page_size=3\" -H 'Authorization: Bearer $TOKEN')",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/tasks?page=1&page_size=10\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(kill -9 56338)",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/articles?page=1&page_size=1\" -H 'Authorization: Bearer $TOKEN')"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}

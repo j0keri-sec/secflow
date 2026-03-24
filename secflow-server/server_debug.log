@@ -1,0 +1,275 @@
+[90m2026-03-20 15:10:01[0m [32mINF[0m [1mcmd/server/main.go:53[0m[36m >[0m [1mmongodb connected[0m [36mdb=[0msecflow
+[90m2026-03-20 15:10:01[0m [32mINF[0m [1mcmd/server/main.go:64[0m[36m >[0m [1mredis connected[0m [36maddr=[0m127.0.0.1:6379
+[90m2026-03-20 15:10:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:113[0m[36m >[0m [1mtask scheduler started[0m
+[90m2026-03-20 15:10:01[0m [32mINF[0m [1minternal/scheduler/task_generator.go:47[0m[36m >[0m [1mtask generator started[0m
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /health                   --> github.com/secflow/server/internal/api.Router.func1 (3 handlers)
+[GIN-debug] POST   /api/v1/auth/register     --> github.com/secflow/server/internal/api/handler.(*AuthHandler).Register-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/login        --> github.com/secflow/server/internal/api/handler.(*AuthHandler).Login-fm (3 handlers)
+[GIN-debug] GET    /api/v1/auth/me           --> github.com/secflow/server/internal/api/handler.(*AuthHandler).Me-fm (4 handlers)
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/secflow/server/internal/api/handler.(*AuthHandler).ChangePassword-fm (4 handlers)
+[GIN-debug] POST   /api/v1/auth/invite       --> github.com/secflow/server/internal/api/handler.(*AuthHandler).GenerateInviteCode-fm (4 handlers)
+[GIN-debug] GET    /api/v1/auth/invite       --> github.com/secflow/server/internal/api/handler.(*AuthHandler).ListInviteCodes-fm (4 handlers)
+[GIN-debug] GET    /api/v1/ws/node           --> github.com/secflow/server/internal/api/handler.(*NodeHandler).ServeWS-fm (3 handlers)
+[GIN-debug] GET    /api/v1/vulns             --> github.com/secflow/server/internal/api/handler.(*VulnHandler).List-fm (4 handlers)
+[GIN-debug] GET    /api/v1/vulns/stats       --> github.com/secflow/server/internal/api/handler.(*VulnHandler).Stats-fm (4 handlers)
+[GIN-debug] GET    /api/v1/vulns/export      --> github.com/secflow/server/internal/api/handler.(*VulnHandler).Export-fm (4 handlers)
+[GIN-debug] GET    /api/v1/vulns/:id         --> github.com/secflow/server/internal/api/handler.(*VulnHandler).Get-fm (4 handlers)
+[GIN-debug] DELETE /api/v1/vulns/:id         --> github.com/secflow/server/internal/api/handler.(*VulnHandler).Delete-fm (5 handlers)
+[GIN-debug] GET    /api/v1/articles          --> github.com/secflow/server/internal/api/handler.(*ArticleHandler).List-fm (4 handlers)
+[GIN-debug] GET    /api/v1/articles/:id      --> github.com/secflow/server/internal/api/handler.(*ArticleHandler).Get-fm (4 handlers)
+[GIN-debug] DELETE /api/v1/articles/:id      --> github.com/secflow/server/internal/api/handler.(*ArticleHandler).Delete-fm (5 handlers)
+[GIN-debug] POST   /api/v1/articles/upsert   --> github.com/secflow/server/internal/api/handler.(*ArticleHandler).Upsert-fm (5 handlers)
+[GIN-debug] GET    /api/v1/tasks             --> github.com/secflow/server/internal/api/handler.(*TaskHandler).List-fm (4 handlers)
+[GIN-debug] GET    /api/v1/tasks/:id         --> github.com/secflow/server/internal/api/handler.(*TaskHandler).Get-fm (4 handlers)
+[GIN-debug] DELETE /api/v1/tasks/:id         --> github.com/secflow/server/internal/api/handler.(*TaskHandler).Delete-fm (5 handlers)
+[GIN-debug] POST   /api/v1/tasks/:id/stop    --> github.com/secflow/server/internal/api/handler.(*TaskHandler).Stop-fm (5 handlers)
+[GIN-debug] POST   /api/v1/tasks/vuln-crawl  --> github.com/secflow/server/internal/api/handler.(*TaskHandler).CreateVulnCrawl-fm (5 handlers)
+[GIN-debug] POST   /api/v1/tasks/article-crawl --> github.com/secflow/server/internal/api/handler.(*TaskHandler).CreateArticleCrawl-fm (5 handlers)
+[GIN-debug] GET    /api/v1/nodes             --> github.com/secflow/server/internal/api/handler.(*NodeHandler).List-fm (4 handlers)
+[GIN-debug] POST   /api/v1/nodes             --> github.com/secflow/server/internal/api/handler.(*NodeHandler).Create-fm (5 handlers)
+[GIN-debug] GET    /api/v1/nodes/:id/logs    --> github.com/secflow/server/internal/api/handler.(*NodeHandler).GetLogs-fm (4 handlers)
+[GIN-debug] DELETE /api/v1/nodes/:id         --> github.com/secflow/server/internal/api/handler.(*NodeHandler).Delete-fm (5 handlers)
+[GIN-debug] POST   /api/v1/nodes/:id/regenerate-token --> github.com/secflow/server/internal/api/handler.(*NodeHandler).RegenerateToken-fm (5 handlers)
+[GIN-debug] POST   /api/v1/nodes/:id/pause   --> github.com/secflow/server/internal/api/handler.(*NodeHandler).Pause-fm (5 handlers)
+[GIN-debug] POST   /api/v1/nodes/:id/resume  --> github.com/secflow/server/internal/api/handler.(*NodeHandler).Resume-fm (5 handlers)
+[GIN-debug] POST   /api/v1/nodes/:id/disconnect --> github.com/secflow/server/internal/api/handler.(*NodeHandler).Disconnect-fm (5 handlers)
+[GIN-debug] GET    /api/v1/push-channels     --> github.com/secflow/server/internal/api/handler.(*PushChannelHandler).List-fm (4 handlers)
+[GIN-debug] POST   /api/v1/push-channels     --> github.com/secflow/server/internal/api/handler.(*PushChannelHandler).Create-fm (5 handlers)
+[GIN-debug] PATCH  /api/v1/push-channels/:id --> github.com/secflow/server/internal/api/handler.(*PushChannelHandler).Update-fm (5 handlers)
+[GIN-debug] DELETE /api/v1/push-channels/:id --> github.com/secflow/server/internal/api/handler.(*PushChannelHandler).Delete-fm (5 handlers)
+[GIN-debug] GET    /api/v1/audit-logs        --> github.com/secflow/server/internal/api/handler.(*AuditLogHandler).List-fm (4 handlers)
+[GIN-debug] GET    /api/v1/reports           --> github.com/secflow/server/internal/api/handler.(*ReportHandler).List-fm (4 handlers)
+[GIN-debug] POST   /api/v1/reports           --> github.com/secflow/server/internal/api/handler.(*ReportHandler).Create-fm (4 handlers)
+[GIN-debug] DELETE /api/v1/reports/:id       --> github.com/secflow/server/internal/api/handler.(*ReportHandler).Delete-fm (5 handlers)
+[GIN-debug] GET    /api/v1/users             --> github.com/secflow/server/internal/api/handler.(*UserHandler).List-fm (5 handlers)
+[GIN-debug] PATCH  /api/v1/users/:id         --> github.com/secflow/server/internal/api/handler.(*UserHandler).UpdateRole-fm (5 handlers)
+[GIN-debug] DELETE /api/v1/users/:id         --> github.com/secflow/server/internal/api/handler.(*UserHandler).Delete-fm (5 handlers)
+[90m2026-03-20 15:10:01[0m [32mINF[0m [1mcmd/server/main.go:133[0m[36m >[0m [1mserver starting[0m [36maddr=[0m0.0.0.0:8080
+[90m2026-03-20 15:10:01[0m [32mINF[0m [1minternal/scheduler/task_generator.go:128[0m[36m >[0m [1mtask generator: created vuln crawl task[0m [36msources=[0m["avd-rod","seebug-rod","ti-rod","nox-rod","kev-rod","struts2-rod","chaitin-rod","oscs-rod","threatbook-rod","venustech-rod"] [36mtask_id=[0md4e977bc-0f03-4586-aa75-9f1e9913ea96
+[90m2026-03-20 15:10:01[0m [32mINF[0m [1minternal/scheduler/task_generator.go:174[0m[36m >[0m [1mtask generator: created article crawl task[0m [36msources=[0m["qianxin-weekly","venustech-article","freebuf","securityweek","hackernews"] [36mtask_id=[0meb9aa836-ea58-4645-87df-b992fb4d5a98
+[90m2026-03-20 15:10:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:10:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:10:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:10:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:01[0m DBG [1minternal/scheduler/scheduler.go:420[0m[36m >[0m scheduler: checking for task timeouts
+[90m2026-03-20 15:11:01[0m DBG [1minternal/scheduler/scheduler.go:430[0m[36m >[0m scheduler: no timed out tasks found
+[90m2026-03-20 15:11:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:11:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:11:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:11:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:01[0m DBG [1minternal/scheduler/scheduler.go:420[0m[36m >[0m scheduler: checking for task timeouts
+[90m2026-03-20 15:12:01[0m DBG [1minternal/scheduler/scheduler.go:430[0m[36m >[0m scheduler: no timed out tasks found
+[90m2026-03-20 15:12:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:12:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:12:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:12:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:01[0m DBG [1minternal/scheduler/scheduler.go:420[0m[36m >[0m scheduler: checking for task timeouts
+[90m2026-03-20 15:13:01[0m DBG [1minternal/scheduler/scheduler.go:430[0m[36m >[0m scheduler: no timed out tasks found
+[90m2026-03-20 15:13:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:13:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:13:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:13:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:01[0m DBG [1minternal/scheduler/scheduler.go:420[0m[36m >[0m scheduler: checking for task timeouts
+[90m2026-03-20 15:14:01[0m DBG [1minternal/scheduler/scheduler.go:430[0m[36m >[0m scheduler: no timed out tasks found
+[90m2026-03-20 15:14:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:14:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:14:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:14:56[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:01[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:01[0m DBG [1minternal/scheduler/scheduler.go:420[0m[36m >[0m scheduler: checking for task timeouts
+[90m2026-03-20 15:15:01[0m DBG [1minternal/scheduler/scheduler.go:430[0m[36m >[0m scheduler: no timed out tasks found
+[90m2026-03-20 15:15:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:06[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:11[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:16[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:21[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:26[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:31[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:36[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:41[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:46[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:176[0m[36m >[0m [1mscheduler: checking for tasks to dispatch[0m
+[90m2026-03-20 15:15:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:180[0m[36m >[0m [1mscheduler: connected nodes[0m [36mnode_count=[0m0
+[90m2026-03-20 15:15:51[0m [32mINF[0m [1minternal/scheduler/scheduler.go:182[0m[36m >[0m [1mscheduler: no connected nodes, skipping dispatch[0m
+[90m2026-03-20 15:15:54[0m [32mINF[0m [1mcmd/server/main.go:143[0m[36m >[0m [1mshutting down...[0m
+[90m2026-03-20 15:15:54[0m [32mINF[0m [1mcmd/server/main.go:154[0m[36m >[0m [1mserver stopped[0m

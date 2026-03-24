@@ -1,0 +1,36 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "debug"
+
+mongodb:
+  uri: "mongodb://127.0.0.1:27017/secflow"
+  database: "secflow"
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+jwt:
+  secret: "secflow-local-dev-secret-2026"
+  expire: "72h"
+
+node:
+  token_key: "secflow-node-token-2026"
+
+log:
+  level: "debug"
+  format: "text"
+
+grabber:
+  interval: "1h"
+  init_page_limit: 3
+  update_page_limit: 1
+
+scheduler:
+  max_retries: 3          # Maximum retry attempts for failed tasks
+  retry_interval: "5m"    # Base retry interval
+  batch_size: 3           # Number of tasks to dispatch in one batch (1-100)
+  task_timeout: "30m"     # Default task timeout (30 minutes)
+  timeout_check: "1m"     # Timeout check interval (1 minute)

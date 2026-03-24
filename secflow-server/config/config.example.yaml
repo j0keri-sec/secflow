@@ -1,0 +1,26 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "debug"
+
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "secflow"
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+jwt:
+  secret: "your-super-secret-key-change-in-production"
+  expire: "24h"
+
+log:
+  level: "debug"
+  format: "json"
+
+grabber:
+  interval: "1h"
+  init_page_limit: 3
+  update_page_limit: 1

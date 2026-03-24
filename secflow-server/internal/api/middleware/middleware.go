@@ -1,0 +1,104 @@
+// Package middleware contains Gin middleware used across all routes.
+package middleware
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
+	"github.com/secflow/server/pkg/auth"
+)
+
+const ctxKeyUserID   = "userID"
+const ctxKeyUsername = "username"
+const ctxKeyRole     = "role"
+const ctxKeyRequestID = "request_id"
+
+// RequestID middleware generates a unique request ID for each request.
+func RequestID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.NewString()
+		}
+		c.Set(ctxKeyRequestID, requestID)
+		c.Header("X-Request-ID", requestID)
+		c.Next()
+	}
+}
+
+// JWTAuth returns a Gin middleware that validates Bearer tokens.
+func JWTAuth(svc *auth.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if header == "" || !strings.HasPrefix(header, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid authorization header"})
+			return
+		}
+		token := strings.TrimPrefix(header, "Bearer ")
+		claims, err := svc.ParseToken(token)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			return
+		}
+		c.Set(ctxKeyUserID, claims.UserID)
+		c.Set(ctxKeyUsername, claims.Username)
+		c.Set(ctxKeyRole, claims.Role)
+		c.Next()
+	}
+}
+
+// RequireRole returns a Gin middleware that enforces a minimum role.
+// Role hierarchy: admin > editor > viewer
+func RequireRole(role string) gin.HandlerFunc {
+	rankOf := map[string]int{"viewer": 1, "editor": 2, "admin": 3}
+	return func(c *gin.Context) {
+		userRole := c.GetString(ctxKeyRole)
+		if rankOf[userRole] < rankOf[role] {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+			return
+		}
+		c.Next()
+	}
+}
+
+// GetUserID extracts the user ID from the Gin context (set by JWTAuth).
+func GetUserID(c *gin.Context) string   { return c.GetString(ctxKeyUserID) }
+func GetUsername(c *gin.Context) string { return c.GetString(ctxKeyUsername) }
+func GetRole(c *gin.Context) string     { return c.GetString(ctxKeyRole) }
+
+// Logger returns a zerolog-based request logger middleware.
+func Logger() gin.HandlerFunc {
+	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		if param.StatusCode >= 500 {
+			return ""
+		}
+		return "" // zerolog handles request logging separately
+	})
+}
+
+// Recovery returns a recovery middleware that returns JSON on panic.
+func Recovery() gin.HandlerFunc {
+	return gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": "internal server error",
+		})
+	})
+}
+
+// CORS returns a permissive CORS middleware for development.
+// Tighten AllowOrigins in production.
+func CORS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	}
+}

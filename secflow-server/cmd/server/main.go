@@ -1,0 +1,163 @@
+// Command server is the secflow platform server entry point.
+package main
+
+import (
+	"context"
+	"flag"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
+
+	"github.com/secflow/server/config"
+	"github.com/secflow/server/internal/api"
+	"github.com/secflow/server/internal/api/handler"
+	"github.com/secflow/server/internal/queue"
+	"github.com/secflow/server/internal/repository"
+	"github.com/secflow/server/internal/scheduler"
+	"github.com/secflow/server/internal/ws"
+	"github.com/secflow/server/pkg/auth"
+	"github.com/secflow/server/pkg/logger"
+)
+
+func main() {
+	cfgPath := flag.String("config", "config/config.yaml", "path to config file")
+	flag.Parse()
+
+	// ── Load configuration ─────────────────────────────────────────────────
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to load config")
+	}
+	if err = cfg.Validate(); err != nil {
+		log.Fatal().Err(err).Msg("invalid config")
+	}
+
+	// ── Init logger ────────────────────────────────────────────────────────
+	logger.Init(cfg.Log.Level, cfg.Log.Format)
+
+	// ── Connect MongoDB ────────────────────────────────────────────────────
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, err := repository.New(ctx, cfg.MongoDB.URI, cfg.MongoDB.Database)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to connect mongodb")
+	}
+	defer db.Close(context.Background())
+	log.Info().Str("db", cfg.MongoDB.Database).Msg("mongodb connected")
+
+	// ── Connect Redis ──────────────────────────────────────────────────────
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+	if err = rdb.Ping(context.Background()).Err(); err != nil {
+		log.Fatal().Err(err).Msg("failed to connect redis")
+	}
+	log.Info().Str("addr", cfg.Redis.Addr).Msg("redis connected")
+
+	// ── Wire dependencies ──────────────────────────────────────────────────
+	q         := queue.New(rdb)
+	authSvc   := auth.New(cfg.JWT.Secret, cfg.JWT.Expire)
+
+	vulnRepo    := repository.NewVulnRepo(db)
+	userRepo    := repository.NewUserRepo(db)
+	invRepo     := repository.NewInviteCodeRepo(db)
+	nodeRepo    := repository.NewNodeRepo(db)
+	taskRepo    := repository.NewTaskRepo(db)
+	articleRepo := repository.NewArticleRepository(db)
+	pushRepo    := repository.NewPushChannelRepository(db)
+	auditRepo   := repository.NewAuditLogRepository(db)
+	reportRepo  := repository.NewReportRepository(db)
+
+	// ── Task Scheduler (dispatches tasks to nodes) ──────────────────────────
+	taskScheduler := scheduler.NewWithConfig(q, taskRepo, nodeRepo, nil, cfg.Scheduler)
+	taskScheduler.Start(ctx)
+
+	// ── Task Schedule Repository ────────────────────────────────────────────
+	scheduleRepo := repository.NewTaskScheduleRepo(db)
+	systemH := handler.NewSystemHandler(scheduleRepo)
+
+	// ── WebSocket Hub ──────────────────────────────────────────────────────
+	// Create node handler with scheduler reference
+	nodeH := handler.NewNodeHandlerWithScheduler(nodeRepo, taskRepo, vulnRepo, articleRepo, q, nil, cfg.Node.TokenKey, taskScheduler)
+	// Create hub with node handler callbacks
+	hub := ws.NewHub(nodeH.OnMessage, nodeH.OnConnect, nodeH.OnDisconnect)
+	// Inject hub into scheduler (circular dependency)
+	taskScheduler.SetHub(hub)
+	// Inject hub into node handler
+	nodeH.Hub = hub
+	// Inject the hub into the node handler (circular dependency resolved by pointer).
+	nodeHwithHub := handler.NewNodeHandlerWithScheduler(nodeRepo, taskRepo, vulnRepo, articleRepo, q, hub, cfg.Node.TokenKey, taskScheduler)
+
+	// ── Task Generator (automatically creates crawl tasks) ──────────────────
+	// Default sources: all rod-based grabbers
+	defaultVulnSources := []string{
+		"avd-rod", "seebug-rod", "ti-rod", "nox-rod",
+		"kev-rod", "struts2-rod", "chaitin-rod",
+		"oscs-rod", "threatbook-rod", "venustech-rod",
+	}
+	taskGenerator := scheduler.NewTaskGenerator(taskRepo, q, nodeRepo, defaultVulnSources, nil)
+	taskGenerator.Start(ctx)
+
+	// ── Build router ───────────────────────────────────────────────────────
+	if cfg.Server.Mode == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	taskH := handler.NewTaskHandler(taskRepo, q)
+	r := api.Router(
+		authSvc,
+		handler.NewAuthHandler(userRepo, invRepo, auditRepo, authSvc),
+		handler.NewVulnHandler(vulnRepo),
+		nodeHwithHub,
+		taskH,
+		handler.NewUserHandler(userRepo),
+		handler.NewArticleHandler(articleRepo),
+		handler.NewPushChannelHandler(pushRepo),
+		handler.NewAuditLogHandler(auditRepo),
+		handler.NewReportHandler(reportRepo),
+		systemH,
+	)
+	// Inject scheduler into task handler for stop functionality
+	taskH.SetScheduler(taskScheduler)
+	_ = nodeH // suppress unused warning
+
+	// ── HTTP Server ────────────────────────────────────────────────────────
+	srv := &http.Server{
+		Addr:         cfg.Server.Addr(),
+		Handler:      r,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	go func() {
+		log.Info().Str("addr", srv.Addr).Msg("server starting")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("server error")
+		}
+	}()
+
+	// ── Graceful shutdown ──────────────────────────────────────────────────
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Info().Msg("shutting down...")
+
+	// Stop schedulers
+	taskScheduler.Stop()
+	taskGenerator.Stop()
+
+	shutCtx, shutCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutCancel()
+	if err = srv.Shutdown(shutCtx); err != nil {
+		log.Error().Err(err).Msg("server forced shutdown")
+	}
+	log.Info().Msg("server stopped")
+}

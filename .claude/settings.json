@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go run:*)",
+      "Bash(curl -s 'https://api.threatbook.cn/v3/vuln/match?apikey=ff0c48bf7d794511a7ff4e00e7257cb66bfb4c392b0b472495cfa303649396a7&user_vendor=apache&user_product=log4j')",
+      "Bash(curl -s 'https://x.threatbook.com/v5/node/vul_module/homePage' -H 'Accept: application/json, text/plain, */*' -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' -H 'Referer: https://x.threatbook.com/v5/vulIntelligence' -H 'Origin: https://mp.weixin.qq.com/' -H 'User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36')",
+      "Bash(curl -s 'https://x.threatbook.com/v5/node/vul_module/homePage' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36' -H 'Accept: application/json, text/plain, */*' -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' -H 'Referer: https://x.threatbook.com/v5/vulIntelligence' -H 'Origin: https://mp.weixin.qq.com/' -H 'Sec-Fetch-Dest: empty' -H 'Sec-Fetch-Mode: cors' -H 'Sec-Fetch-Site: same-origin')",
+      "Bash(curl -s 'https://api.threatbook.cn/v3/vuln?apikey=ff0c48bf7d794511a7ff4e00e7257cb66bfb4c392b0b472495cfa303649396a7&vuln_id=XVE-2021-40836')",
+      "Bash(npm run:*)",
+      "Bash(ps -p 51985 -o comm=)",
+      "Bash(kill 51985)",
+      "Bash(curl -s http://127.0.0.1:8080/api/v1/health)",
+      "Bash(docker exec:*)",
+      "Bash(docker volume:*)",
+      "Bash(ls -la *.go)",
+      "Bash(curl -s http://127.0.0.1:8080/health)",
+      "Bash(kill 52236)",
+      "Bash(curl -s http://127.0.0.1:8080/api/v1/tasks)",
+      "Bash(curl -s -X POST http://127.0.0.1:8080/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"admin123\"\"}')",
+      "Bash(docker-compose stop:*)",
+      "Bash(1 docker:*)",
+      "Bash(/dev/null docker-compose:*)",
+      "Bash(1 sleep:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjliZmNmOTM4YjA4NjllZjJkOWMyOGVlIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NDQzNzQyOSwiaWF0IjoxNzc0MTc4MjI5fQ.WR8iuu3rNVoSggi-bpoDO675NKmKWX84JEv9gAdGD8Y\" curl -s http://127.0.0.1:8080/api/v1/tasks -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjliZmNmOTM4YjA4NjllZjJkOWMyOGVlIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NDQzNzQyOSwiaWF0IjoxNzc0MTc4MjI5fQ.WR8iuu3rNVoSggi-bpoDO675NKmKWX84JEv9gAdGD8Y\" echo \"=== 文章列表 ===\")",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/articles?page=1&page_size=5\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjliZmNmOTM4YjA4NjllZjJkOWMyOGVlIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NDQzNzQyOSwiaWF0IjoxNzc0MTc4MjI5fQ.WR8iuu3rNVoSggi-bpoDO675NKmKWX84JEv9gAdGD8Y\" echo \"=== 最新文章 ===\")",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/articles?page=1&page_size=2\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjliZmNmOTM4YjA4NjllZjJkOWMyOGVlIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NDQzNzQyOSwiaWF0IjoxNzc0MTc4MjI5fQ.WR8iuu3rNVoSggi-bpoDO675NKmKWX84JEv9gAdGD8Y\" echo \"=== 最新漏洞 ===\")",
+      "Bash(curl -s \"http://127.0.0.1:8080/api/v1/vulns?page=1&page_size=3\" -H \"Authorization: Bearer $TOKEN\")",
+      "Read(//Users/j0ker/Desktop/coder/secflow/secflow-server/**)",
+      "Bash(curl -s http://localhost:5174/)",
+      "Bash(go get:*)",
+      "Bash(npm install:*)",
+      "Bash(npx vite:*)",
+      "Bash(pkill -f \"secflow-client\")"
+    ]
+  }
+}
