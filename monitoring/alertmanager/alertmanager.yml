@@ -1,0 +1,157 @@
+#===============================================================================
+# AlertManager 配置
+# 
+# 用于接收 Prometheus 告警并路由到不同的接收者
+# 支持: 邮件、钉钉、飞书、Slack、PagerDuty 等
+#===============================================================================
+
+global:
+  # SMTP 配置 (用于邮件告警)
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'alertmanager@example.com'
+  smtp_auth_password: 'your-smtp-password'
+  
+  # Resend 间隔 (当告警持续时)
+  resolve_timeout: 5m
+
+# 路由配置
+route:
+  # 按 severity 分组
+  group_by: ['alertname', 'severity', 'service', 'cluster']
+  
+  # 初始等待时间
+  group_wait: 30s
+  group_interval: 5m
+  
+  # 未解决告警重复间隔
+  repeat_interval: 4h
+  
+  # 默认接收者
+  receiver: 'default-receiver'
+  
+  # 子路由
+  routes:
+    # 严重告警 (critical) - 立即通知
+    - match:
+        severity: critical
+      receiver: 'critical-receiver'
+      group_wait: 0s
+      repeat_interval: 1h
+      # 继续匹配其他路由
+      continue: true
+    
+    # 安全告警 - 发送到安全频道
+    - match:
+        service: security
+      receiver: 'security-receiver'
+      group_wait: 1m
+    
+    # 数据库告警 - 发送给 DBA
+    - match:
+        service: database
+      receiver: 'dba-receiver'
+      group_wait: 1m
+    
+    # 爬虫告警 - 发送给运维
+    - match:
+        service: crawler
+      receiver: 'ops-receiver'
+      group_wait: 2m
+
+# 接收者定义
+receivers:
+  # 默认接收者 (邮件)
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'secflow-team@example.com'
+        send_resolved: true
+        headers:
+          subject: '[SecFlow] {{ .Status | toUpper }} - {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>SecFlow 告警通知</h2>
+          <p><strong>告警名称:</strong> {{ .GroupLabels.alertname }}</p>
+          <p><strong>状态:</strong> {{ .Status }}</p>
+          <p><strong>严重程度:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>服务:</strong> {{ .GroupLabels.service }}</p>
+          {{ if gt (len .Alerts.Firing) 0 }}
+          <h3> firing 告警:</h3>
+          <ul>
+          {{ range .Alerts.Firing }}
+            <li>{{ .Annotations.summary }}</li>
+            <li>{{ .Annotations.description }}</li>
+            <li>开始时间: {{ .StartsAt }}</li>
+          {{ end }}
+          </ul>
+          {{ end }}
+          {{ if gt (len .Alerts.Resolved) 0 }}
+          <h3> resolved 告警:</h3>
+          <ul>
+          {{ range .Alerts.Resolved }}
+            <li>{{ .Annotations.summary }}</li>
+          {{ end }}
+          </ul>
+          {{ end }}
+
+  # 严重告警接收者 (电话 + 邮件)
+  - name: 'critical-receiver'
+    email_configs:
+      - to: 'secflow-critical@example.com'
+        send_resolved: true
+    # 电话告警 (需要配置 webhook)
+    webhook_configs:
+      - url: 'http://alertmanager:5003/webhook/call'
+        send_resolved: true
+
+  # 安全告警接收者
+  - name: 'security-receiver'
+    email_configs:
+      - to: 'security-team@example.com'
+        send_resolved: true
+
+  # DBA 告警接收者
+  - name: 'dba-receiver'
+    email_configs:
+      - to: 'dba-team@example.com'
+        send_resolved: true
+    webhook_configs:
+      - url: 'http://dingtalk-webhook:8060/dingtalk/webhook'
+        send_resolved: true
+
+  # 运维告警接收者
+  - name: 'ops-receiver'
+    email_configs:
+      - to: 'ops-team@example.com'
+        send_resolved: true
+    # 钉钉配置
+    webhook_configs:
+      - url: 'https://oapi.dingtalk.com/robot/send?access_token=YOUR_DINGTALK_TOKEN'
+        send_resolved: true
+
+# 抑制规则 (抑制低优先级告警)
+inhibit_rules:
+  # 当服务宕机时，抑制该服务的所有其他告警
+  - source_match:
+      alertname: 'SecFlowServerDown'
+    source_match_re:
+      severity: 'critical'
+    target_match_re:
+      severity: 'warning|info'
+    equal: ['alertname', 'service']
+  
+  # 当数据库宕机时，抑制相关告警
+  - source_match:
+      alertname: 'MongoDBDown'
+    source_match_re:
+      severity: 'critical'
+    target_match_re:
+      severity: 'warning'
+    equal: ['service']
+  
+  - source_match:
+      alertname: 'RedisDown'
+    source_match_re:
+      severity: 'critical'
+    target_match_re:
+      severity: 'warning'
+    equal: ['service']

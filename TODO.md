@@ -5,33 +5,34 @@
 ### ✅ 已完成
 - [x] 密码重置系统
 - [x] 用户权限系统完善
-- [x] 单元测试 (auth_test.go)
+- [x] 单元测试 (auth_test.go, handler_test.go)
 - [x] CHANGELOG.md
+- [x] 监控告警系统 (AlertManager 配置)
+- [x] 运维脚本 (backup.sh, restore.sh, healthcheck.sh)
 
 ### 🔄 进行中
-- [ ] 完善测试覆盖
+- [ ] Docker 优化
 
 ### 📌 待完成
 
 #### 1. 测试完善
-- [ ] 为 secflow-server 编写更多单元测试
-  - [ ] handler 测试 (vuln, article, task, node)
-  - [ ] repository 测试
-  - [ ] scheduler 测试
+- [x] 为 secflow-server 编写更多单元测试 ✅
+- [x] handler 测试 ✅
 - [ ] 为 secflow-client 编写基本测试
 - [ ] 添加集成测试脚本
 
 #### 2. 监控告警系统
-- [ ] 完善 Prometheus 指标导出
-- [ ] 添加 AlertManager 配置
+- [x] AlertManager 配置 ✅
+- [x] 告警规则完善 ✅ (已有 alerts.yml)
 - [ ] 优化 Grafana dashboard
-- [ ] 添加告警规则
+- [ ] 添加日志收集配置 (ELK/Loki)
 
 #### 3. 运维功能
-- [ ] MongoDB/Redis 备份脚本
+- [x] 备份脚本 (backup.sh) ✅
+- [x] 恢复脚本 (restore.sh) ✅
+- [x] 健康检查脚本 (healthcheck.sh) ✅
+- [ ] 日志收集配置
 - [ ] 数据迁移脚本
-- [ ] 日志收集配置 (ELK/Loki)
-- [ ] 健康检查脚本
 
 #### 4. Docker 优化
 - [ ] 添加 .dockerignore
