@@ -55,6 +55,18 @@ type InviteCode struct {
 	UsedAt    time.Time     `bson:"used_at,omitempty" json:"used_at,omitempty"`
 }
 
+// PasswordResetToken stores one-time password reset tokens.
+// Collection: password_reset_tokens
+// Tokens are hashed before storage for security.
+type PasswordResetToken struct {
+	ID        bson.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID    bson.ObjectID `bson:"user_id"       json:"user_id"`      // User requesting reset
+	TokenHash string        `bson:"token_hash"    json:"-"`             // SHA-256 hash of reset token
+	ExpiresAt time.Time     `bson:"expires_at"    json:"expires_at"`    // Token validity deadline
+	Used      bool          `bson:"used"          json:"used"`          // Whether token has been consumed
+	CreatedAt time.Time     `bson:"created_at"    json:"created_at"`    // Token creation time
+}
+
 // --------------------------------------------------------------------------
 // Node (Client)
 // --------------------------------------------------------------------------
@@ -339,16 +351,17 @@ type Report struct {
 
 // CollectionNames maps model types to their MongoDB collection names.
 const (
-	CollUsers         = "users"
-	CollInviteCodes   = "invite_codes"
-	CollNodes         = "nodes"
-	CollTasks         = "tasks"
-	CollVulnRecords   = "vuln_records"
-	CollArticles      = "articles"
-	CollPushChannels  = "push_channels"
-	CollAuditLogs     = "audit_logs"
-	CollReports       = "reports"
-	CollTaskSchedules = "task_schedules"
+	CollUsers               = "users"
+	CollInviteCodes         = "invite_codes"
+	CollPasswordResetTokens = "password_reset_tokens"
+	CollNodes               = "nodes"
+	CollTasks               = "tasks"
+	CollVulnRecords         = "vuln_records"
+	CollArticles            = "articles"
+	CollPushChannels        = "push_channels"
+	CollAuditLogs           = "audit_logs"
+	CollReports             = "reports"
+	CollTaskSchedules       = "task_schedules"
 )
 
 // TaskSchedule stores the periodic task generation configuration.

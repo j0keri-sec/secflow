@@ -224,3 +224,50 @@ func (r *ReportRepository) Delete(ctx context.Context, id bson.ObjectID) error {
 	_, err := r.db.coll(model.CollReports).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
+
+// ── PasswordResetToken ─────────────────────────────────────────────────────
+
+// PasswordResetTokenRepo manages password_reset_tokens collection.
+type PasswordResetTokenRepo struct{ db *DB }
+
+// NewPasswordResetTokenRepo creates a new PasswordResetTokenRepo.
+func NewPasswordResetTokenRepo(db *DB) *PasswordResetTokenRepo {
+	return &PasswordResetTokenRepo{db: db}
+}
+
+// Create inserts a new password reset token.
+func (r *PasswordResetTokenRepo) Create(ctx context.Context, token *model.PasswordResetToken) error {
+	_, err := r.db.coll(model.CollPasswordResetTokens).InsertOne(ctx, token)
+	return err
+}
+
+// GetByTokenHash retrieves a token by its hashed value.
+func (r *PasswordResetTokenRepo) GetByTokenHash(ctx context.Context, hash string) (*model.PasswordResetToken, error) {
+	coll := r.db.coll(model.CollPasswordResetTokens)
+	var token model.PasswordResetToken
+	err := coll.FindOne(ctx, bson.M{"token_hash": hash}).Decode(&token)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+	return &token, err
+}
+
+// MarkUsed marks a token as used (one-time only).
+func (r *PasswordResetTokenRepo) MarkUsed(ctx context.Context, id bson.ObjectID) error {
+	_, err := r.db.coll(model.CollPasswordResetTokens).UpdateOne(ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": bson.M{"used": true}},
+	)
+	return err
+}
+
+// DeleteExpired removes all expired tokens (cleanup job).
+func (r *PasswordResetTokenRepo) DeleteExpired(ctx context.Context) (int64, error) {
+	result, err := r.db.coll(model.CollPasswordResetTokens).DeleteMany(ctx,
+		bson.M{"expires_at": bson.M{"$lt": time.Now()}},
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.DeletedCount, nil
+}

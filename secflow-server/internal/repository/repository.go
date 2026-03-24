@@ -285,6 +285,17 @@ func (r *UserRepo) GetByUsername(ctx context.Context, username string) (*model.U
 	return &u, err
 }
 
+// GetByEmail returns a user by email address (case-insensitive).
+func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	var u model.User
+	// Email lookup is case-insensitive using regex
+	err := r.db.coll(model.CollUsers).FindOne(ctx, bson.M{"email": bson.M{"$regex": "^" + email + "$", "$options": "i"}}).Decode(&u)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+	return &u, err
+}
+
 // GetByID returns a user by ObjectID.
 func (r *UserRepo) GetByID(ctx context.Context, id bson.ObjectID) (*model.User, error) {
 	var u model.User
