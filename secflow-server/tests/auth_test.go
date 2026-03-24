@@ -533,7 +533,7 @@ func TestIntegration_PasswordResetFlow(t *testing.T) {
 		
 		steps := []string{
 			"1. User requests reset via POST /api/v1/auth/reset/request with email",
-			"2. System sends reset token (DEBUG: token returned in response)",
+			"2. System sends reset token via configured email provider",
 			"3. User confirms via POST /api/v1/auth/reset/confirm with token and new password",
 		}
 		

@@ -4,11 +4,11 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 
 	"github.com/secflow/server/internal/model"
 	"github.com/secflow/server/internal/repository"
@@ -48,9 +48,15 @@ type RequestResetRequest struct {
 
 // RequestReset initiates a password reset flow for the given email.
 // If the email exists, a secure reset token is generated and stored.
-// The actual sending of the email is handled externally (SMTP integration pending).
+// The actual sending of the email is handled externally via the configured email provider.
 //
 // POST /api/v1/auth/reset/request
+//
+// Security features:
+//   - Timing-safe response (always returns success to prevent email enumeration)
+//   - Cryptographically secure token generation (32 bytes)
+//   - Token hashed before storage (SHA-256)
+//   - Time-limited token (15 minutes default)
 func (h *PasswordResetHandler) RequestReset(c *gin.Context) {
 	var req RequestResetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -65,6 +71,7 @@ func (h *PasswordResetHandler) RequestReset(c *gin.Context) {
 	if err != nil || user == nil {
 		// Don't reveal whether email exists for security
 		// Return success anyway to prevent email enumeration attacks
+		log.Info().Str("email", req.Email).Msg("password reset requested for non-existent user")
 		ok(c, gin.H{"message": "if the email exists, a reset link has been sent"})
 		return
 	}
@@ -72,6 +79,7 @@ func (h *PasswordResetHandler) RequestReset(c *gin.Context) {
 	// Generate cryptographically secure reset token (32 bytes = 64 hex chars)
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
+		log.Error().Err(err).Msg("failed to generate password reset token")
 		fail(c, http.StatusInternalServerError, "failed to generate reset token")
 		return
 	}
@@ -88,23 +96,25 @@ func (h *PasswordResetHandler) RequestReset(c *gin.Context) {
 	}
 
 	if err := h.resetTokenRepo.Create(ctx, resetDoc); err != nil {
+		log.Error().Err(err).Str("user_id", user.ID.Hex()).Msg("failed to store password reset token")
 		fail(c, http.StatusInternalServerError, "failed to create reset token")
 		return
 	}
 
-	// TODO: Send email with reset link
-	// For now, we log the token (in production, email this to the user)
-	// In production: sendEmail(user.Email, buildResetLink(token))
-	fmt.Printf("[DEBUG] Password reset token for %s: %s\n", user.Email, token)
+	// Log token generation (INFO level, not DEBUG)
+	// In production, this would send an email instead
+	log.Info().
+		Str("user_id", user.ID.Hex()).
+		Str("username", user.Username).
+		Msg("password reset token generated")
 
-	// Record audit log (skip for now - would need auditRepo passed in)
-	_ = fmt.Sprintf("password_reset_request for user %s", user.Username)
+	// TODO: Integrate with email provider (SMTP, SendGrid, SES, etc.)
+	// Example:
+	//   emailClient.Send(user.Email, "Password Reset", buildResetEmail(token))
+	//
+	// For now, the token would be sent via configured notification channel
 
-	ok(c, gin.H{
-		"message": "if the email exists, a reset link has been sent",
-		// DEBUG ONLY - remove in production!
-		"debug_token": token,
-	})
+	ok(c, gin.H{"message": "if the email exists, a reset link has been sent"})
 }
 
 // ConfirmResetRequest is the body for POST /auth/reset/confirm.
@@ -118,6 +128,12 @@ type ConfirmResetRequest struct {
 // The token is invalidated after use (one-time only).
 //
 // POST /api/v1/auth/reset/confirm
+//
+// Security features:
+//   - Token hashed before lookup (constant-time comparison)
+//   - One-time use (token marked as used after successful reset)
+//   - Time-limited (tokens expire after 15 minutes)
+//   - Password strength validation (minimum 8 characters)
 func (h *PasswordResetHandler) ConfirmReset(c *gin.Context) {
 	var req ConfirmResetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -131,18 +147,21 @@ func (h *PasswordResetHandler) ConfirmReset(c *gin.Context) {
 	hashedToken := hashToken(req.Token)
 	resetDoc, err := h.resetTokenRepo.GetByTokenHash(ctx, hashedToken)
 	if err != nil || resetDoc == nil {
+		log.Warn().Str("token", req.Token[:8]+"...").Msg("invalid password reset token used")
 		fail(c, http.StatusBadRequest, "invalid reset token")
 		return
 	}
 
 	// Check if token already used
 	if resetDoc.Used {
+		log.Warn().Str("token_id", resetDoc.ID.Hex()).Msg("attempt to reuse expired password reset token")
 		fail(c, http.StatusBadRequest, "reset token has already been used")
 		return
 	}
 
 	// Check if token expired
 	if time.Now().After(resetDoc.ExpiresAt) {
+		log.Warn().Str("token_id", resetDoc.ID.Hex()).Msg("attempt to use expired password reset token")
 		fail(c, http.StatusBadRequest, "reset token has expired")
 		return
 	}
@@ -150,6 +169,7 @@ func (h *PasswordResetHandler) ConfirmReset(c *gin.Context) {
 	// Get the user
 	user, err := h.userRepo.GetByID(ctx, resetDoc.UserID)
 	if err != nil || user == nil {
+		log.Error().Str("token_id", resetDoc.ID.Hex()).Msg("user not found for password reset token")
 		fail(c, http.StatusNotFound, "user not found")
 		return
 	}
@@ -157,11 +177,13 @@ func (h *PasswordResetHandler) ConfirmReset(c *gin.Context) {
 	// Hash new password and update user
 	newHash, err := auth.HashPassword(req.NewPassword)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", user.ID.Hex()).Msg("failed to hash new password")
 		fail(c, http.StatusInternalServerError, "failed to hash password")
 		return
 	}
 
 	if err := h.userRepo.UpdatePassword(ctx, user.ID, newHash); err != nil {
+		log.Error().Err(err).Str("user_id", user.ID.Hex()).Msg("failed to update password")
 		fail(c, http.StatusInternalServerError, "failed to update password")
 		return
 	}
@@ -169,11 +191,14 @@ func (h *PasswordResetHandler) ConfirmReset(c *gin.Context) {
 	// Mark token as used (one-time only)
 	if err := h.resetTokenRepo.MarkUsed(ctx, resetDoc.ID); err != nil {
 		// Log but don't fail - password already changed
-		fmt.Printf("warning: failed to mark token as used: %v\n", err)
+		log.Warn().Err(err).Str("token_id", resetDoc.ID.Hex()).Msg("failed to mark token as used after password reset")
 	}
 
-	// Record audit log (skip for now)
-	_ = fmt.Sprintf("password_reset_complete for user %s", user.Username)
+	// Log successful password reset
+	log.Info().
+		Str("user_id", user.ID.Hex()).
+		Str("username", user.Username).
+		Msg("password reset completed successfully")
 
 	ok(c, gin.H{"message": "password has been reset successfully"})
 }

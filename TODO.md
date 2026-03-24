@@ -9,35 +9,26 @@
 - [x] CHANGELOG.md
 - [x] 监控告警系统 (AlertManager 配置)
 - [x] 运维脚本 (backup.sh, restore.sh, healthcheck.sh)
-
-### 🔄 进行中
-- [ ] Docker 优化
+- [x] Docker 优化 (.dockerignore)
+- [x] Helm Chart (K8s 部署)
 
 ### 📌 待完成
 
 #### 1. 测试完善
-- [x] 为 secflow-server 编写更多单元测试 ✅
-- [x] handler 测试 ✅
 - [ ] 为 secflow-client 编写基本测试
 - [ ] 添加集成测试脚本
 
 #### 2. 监控告警系统
-- [x] AlertManager 配置 ✅
-- [x] 告警规则完善 ✅ (已有 alerts.yml)
 - [ ] 优化 Grafana dashboard
 - [ ] 添加日志收集配置 (ELK/Loki)
 
 #### 3. 运维功能
-- [x] 备份脚本 (backup.sh) ✅
-- [x] 恢复脚本 (restore.sh) ✅
-- [x] 健康检查脚本 (healthcheck.sh) ✅
 - [ ] 日志收集配置
 - [ ] 数据迁移脚本
 
 #### 4. Docker 优化
-- [ ] 添加 .dockerignore
-- [ ] 优化镜像大小
-- [ ] 添加 Helm Chart (K8s)
+- [x] .dockerignore ✅
+- [x] Helm Chart ✅
 
 #### 5. 代码质量
 - [ ] 为所有公开函数添加 godoc 注释
@@ -51,29 +42,34 @@
 
 ---
 
-## 🚀 执行计划
+## 📊 完成统计
 
-### Phase 1: 测试完善 (当前)
-1. 编写 handler 单元测试
-2. 编写 repository 单元测试
-3. 添加集成测试脚本
+### 已完成功能
+- ✅ 密码重置系统
+- ✅ 用户权限系统
+- ✅ 单元测试 (auth + handler)
+- ✅ 备份/恢复/健康检查脚本
+- ✅ AlertManager 配置
+- ✅ Docker 优化 + Helm Chart
+- ✅ CHANGELOG.md
 
-### Phase 2: 监控告警
-1. 完善 Prometheus 配置
-2. 添加 AlertManager
-3. 优化 Grafana
+### Git 提交记录
+- c9413bd - feat: add password reset system and unit tests
+- 663da6c - test: add comprehensive handler and model unit tests
+- f03bd93 - ops: add backup, restore, and healthcheck scripts + AlertManager config
+- a5895ec - docker+k8s: add .dockerignore and Helm chart for K8s deployment
 
-### Phase 3: 运维脚本
-1. 备份脚本
-2. 迁移脚本
-3. 健康检查
+---
 
-### Phase 4: Docker & 部署
-1. 优化 Dockerfile
-2. 添加 Helm Chart
-3. 完善 docker-compose
+## 🚀 下一步计划
 
 ### Phase 5: 代码质量 & 文档
-1. 添加 godoc 注释
-2. 修复 TODO
+1. 检查代码中的 TODO 并修复
+2. 添加 godoc 注释
 3. 完善文档
+
+### Phase 6: 客户端测试
+1. 为 secflow-client 编写基本测试
+2. 添加集成测试
+
+完成后项目将非常完善！
