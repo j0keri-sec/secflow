@@ -108,11 +108,15 @@ func (h *PasswordResetHandler) RequestReset(c *gin.Context) {
 		Str("username", user.Username).
 		Msg("password reset token generated")
 
-	// TODO: Integrate with email provider (SMTP, SendGrid, SES, etc.)
-	// Example:
-	//   emailClient.Send(user.Email, "Password Reset", buildResetEmail(token))
+	// TODO: Implement email sending - email integration not yet configured.
+	// To implement: integrate with an email provider (SMTP, SendGrid, SES, etc.)
+	// and send the reset token to the user via email.
+	// The raw token (not hashed) should be sent to user.Email.
+	// Example implementation:
+	//   emailClient := email.NewProvider(smtpConfig)
+	//   emailClient.Send(user.Email, "Password Reset", fmt.Sprintf("Your reset token: %s", token))
 	//
-	// For now, the token would be sent via configured notification channel
+	// Current behavior: token is generated and logged, but no email is sent.
 
 	ok(c, gin.H{"message": "if the email exists, a reset link has been sent"})
 }
