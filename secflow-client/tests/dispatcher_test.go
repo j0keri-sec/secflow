@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"testing"
@@ -210,6 +211,7 @@ func TestTaskCancel(t *testing.T) {
 	// Simulate task start
 	taskID := "task-123"
 	ctx, cancel := context.WithCancel(context.Background())
+		_ = ctx
 	mu.Lock()
 	cancels[taskID] = cancel
 	mu.Unlock()
@@ -249,6 +251,7 @@ func TestConcurrentTaskTracking(t *testing.T) {
 
 	for _, id := range taskIDs {
 		ctx, cancel := context.WithCancel(context.Background())
+		_ = ctx
 		mu.Lock()
 		cancels[id] = cancel
 		mu.Unlock()
@@ -286,6 +289,7 @@ func TestDispatcherMock(t *testing.T) {
 	}
 
 	payloadJSON, _ := json.Marshal(payload)
+	_ = payloadJSON
 
 	// Simulate dispatcher receiving task
 	err := db.UpsertTask(&taskRecord{
@@ -329,6 +333,3 @@ func TestErrorHandling(t *testing.T) {
 	assert.Equal(t, "task-001", ws.sentErrors[0].TaskID)
 	assert.Equal(t, "connection timeout", ws.sentErrors[0].Error)
 }
-
-// context import for context package
-import "context"

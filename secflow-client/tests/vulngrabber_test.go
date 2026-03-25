@@ -118,7 +118,7 @@ func TestVulnInfoSeverity(t *testing.T) {
 	for _, sev := range validSeverities {
 		vuln := &vulngrabber.VulnInfo{
 			UniqueKey: "test",
-			Severity:  sev,
+			Severity:  vulngrabber.SeverityLevel(sev),
 		}
 		assert.Equal(t, sev, vuln.Severity)
 	}

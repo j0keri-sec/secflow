@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,8 +42,8 @@ func TestDBInit(t *testing.T) {
 		TaskID:     "task-001",
 		Type:       "vuln_crawl",
 		Status:     "running",
-		ReceivedAt: database.Now(),
-		UpdatedAt:  database.Now(),
+		ReceivedAt: time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 	err = database.UpsertTask(task)
 	require.NoError(t, err)
@@ -68,8 +69,8 @@ func TestDBTaskLifecycle(t *testing.T) {
 		TaskID:     taskID,
 		Type:       "vuln_crawl",
 		Status:     "pending",
-		ReceivedAt: database.Now(),
-		UpdatedAt:  database.Now(),
+		ReceivedAt: time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 	err = database.UpsertTask(task)
 	require.NoError(t, err)
@@ -174,8 +175,8 @@ func TestDBConcurrentAccess(t *testing.T) {
 					TaskID:     taskID,
 					Type:       "vuln_crawl",
 					Status:     "running",
-					ReceivedAt: database.Now(),
-					UpdatedAt:  database.Now(),
+					ReceivedAt: time.Now(),
+					UpdatedAt:  time.Now(),
 				}
 				_ = database.UpsertTask(task)
 				_ = database.UpdateTaskStatus(taskID, "running", id*10+j, "")
