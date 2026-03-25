@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"strings"
 	"time"
 
@@ -453,20 +454,35 @@ func (g *Generator) GenerateHTML(data *ReportData) ([]byte, error) {
 func (g *Generator) wrapHTMLTemplate(data *ReportData, content []byte) []byte {
 	var buf bytes.Buffer
 
-	buf.WriteString(`<!DOCTYPE html>
+	htmlTemplate.Execute(&buf, struct {
+		Title       string
+		Description string
+		Content     template.HTML
+		DateFrom    string
+		DateTo      string
+		DataSources string
+		GeneratedAt string
+	}{
+		Title:       data.Title,
+		Description: fmt.Sprintf("SecFlow %s - %s 至 %s", g.getReportTypeName(data.ReportType), data.DateFrom.Format("2006/01/02"), data.DateTo.Format("2006/01/02")),
+		Content:     template.HTML(content),
+		DateFrom:    data.DateFrom.Format("2006/01/02"),
+		DateTo:      data.DateTo.Format("2006/01/02"),
+		DataSources: strings.Join(data.DataSources, ", "),
+		GeneratedAt: data.GeneratedAt.Format("2006-01-02 15:04:05"),
+	})
+
+	return buf.Bytes()
+}
+
+// htmlTemplate is the HTML template for reports.
+var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="`)
-	buf.WriteString(fmt.Sprintf("SecFlow %s - %s 至 %s",
-		g.getReportTypeName(data.ReportType),
-		data.DateFrom.Format("2006/01/02"),
-		data.DateTo.Format("2006/01/02")))
-	buf.WriteString(`">
-    <title>`)
-	buf.WriteString(data.Title)
-	buf.WriteString(`</title>
+    <meta name="description" content="{{.Description}}">
+    <title>{{.Title}}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -578,35 +594,20 @@ func (g *Generator) wrapHTMLTemplate(data *ReportData, content []byte) []byte {
     </style>
 </head>
 <body>
-    <h1>`)
-	buf.WriteString(data.Title)
-	buf.WriteString(`</h1>
+    <h1>{{.Title}}</h1>
     <div class="meta">
-        <span><strong>报告周期</strong>: `)
-	buf.WriteString(fmt.Sprintf("%s - %s",
-		data.DateFrom.Format("2006/01/02"),
-		data.DateTo.Format("2006/01/02")))
-	buf.WriteString(`</span>
-        <span><strong>数据来源</strong>: `)
-	buf.WriteString(strings.Join(data.DataSources, ", "))
-	buf.WriteString(`</span>
-        <span><strong>生成时间</strong>: `)
-	buf.WriteString(data.GeneratedAt.Format("2006-01-02 15:04:05"))
-	buf.WriteString(`</span>
+        <span><strong>报告周期</strong>: {{.DateFrom}} - {{.DateTo}}</span>
+        <span><strong>数据来源</strong>: {{.DataSources}}</span>
+        <span><strong>生成时间</strong>: {{.GeneratedAt}}</span>
     </div>
     <div class="content">
-`)
-	buf.Write(content)
-	buf.WriteString(`
+{{.Content}}
     </div>
     <div class="footer">
         <p>本报告由 <strong>SecFlow 安全情报平台</strong> 自动生成</p>
     </div>
 </body>
-</html>`)
-
-	return buf.Bytes()
-}
+</html>`))
 
 // ExportToFile exports the report to a file with the given format.
 func (g *Generator) ExportToFile(data *ReportData, format ExportFormat) ([]byte, string, error) {
