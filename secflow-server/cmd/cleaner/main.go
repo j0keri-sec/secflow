@@ -3,18 +3,23 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/secflow/server/pkg/cleaner"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
+	// Setup zerolog
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -23,7 +28,7 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		fmt.Println("shutting down...")
+		log.Info().Msg("shutting down...")
 		cancel()
 	}()
 
@@ -34,20 +39,18 @@ func main() {
 	archivePath := getEnv("SECFLOW_ARCHIVE_PATH", "/archive")
 
 	// Connect to MongoDB
-	fmt.Printf("connecting to MongoDB: %s\n", mongoURI)
+	log.Info().Str("mongo_uri", mongoURI).Msg("connecting to MongoDB")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to connect to MongoDB: %v\n", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("failed to connect to MongoDB")
 	}
 	defer client.Disconnect(ctx)
 
 	// Ping database
 	if err := client.Ping(ctx, nil); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to ping MongoDB: %v\n", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("failed to ping MongoDB")
 	}
-	fmt.Println("connected to MongoDB")
+	log.Info().Msg("connected to MongoDB")
 
 	db := client.Database("secflow")
 
@@ -61,10 +64,9 @@ func main() {
 	c := cleaner.New(config, db)
 
 	// Start cleaner
-	fmt.Printf("starting cleaner with retention=%d days, archive=%v\n", retentionDays, archiveEnabled)
+	log.Info().Int("retention_days", retentionDays).Bool("archive", archiveEnabled).Msg("starting cleaner")
 	if err := c.Start(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "cleaner error: %v\n", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("cleaner error")
 	}
 }
 

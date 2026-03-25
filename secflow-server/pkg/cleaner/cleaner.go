@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -56,7 +57,7 @@ func (c *Cleaner) Start(ctx context.Context) error {
 			return ctx.Err()
 		case <-ticker.C:
 			if err := c.Cleanup(ctx); err != nil {
-				fmt.Printf("cleanup failed: %v\n", err)
+				log.Error().Err(err).Msg("cleanup failed")
 			}
 		}
 	}
@@ -66,7 +67,7 @@ func (c *Cleaner) Start(ctx context.Context) error {
 func (c *Cleaner) Cleanup(ctx context.Context) error {
 	cutoffDate := time.Now().AddDate(0, 0, -c.config.RetentionDays)
 
-	fmt.Printf("starting cleanup for data older than %s\n", cutoffDate.Format("2006-01-02"))
+	log.Info().Str("cutoff_date", cutoffDate.Format("2006-01-02")).Msg("starting cleanup")
 
 	// 清理漏洞数据
 	if err := c.cleanupVulns(ctx, cutoffDate); err != nil {
@@ -88,7 +89,7 @@ func (c *Cleaner) Cleanup(ctx context.Context) error {
 		return fmt.Errorf("cleanup audit logs: %w", err)
 	}
 
-	fmt.Println("cleanup completed successfully")
+	log.Info().Msg("cleanup completed successfully")
 	return nil
 }
 
@@ -111,7 +112,7 @@ func (c *Cleaner) cleanupVulns(ctx context.Context, cutoffDate time.Time) error 
 		return fmt.Errorf("delete vulns: %w", err)
 	}
 
-	fmt.Printf("deleted %d old vulnerabilities\n", result.DeletedCount)
+	log.Info().Int64("count", result.DeletedCount).Msg("deleted old vulnerabilities")
 	return nil
 }
 
@@ -133,7 +134,7 @@ func (c *Cleaner) cleanupArticles(ctx context.Context, cutoffDate time.Time) err
 		return fmt.Errorf("delete articles: %w", err)
 	}
 
-	fmt.Printf("deleted %d old articles\n", result.DeletedCount)
+	log.Info().Int64("count", result.DeletedCount).Msg("deleted old articles")
 	return nil
 }
 
@@ -150,7 +151,7 @@ func (c *Cleaner) cleanupTasks(ctx context.Context, cutoffDate time.Time) error 
 		return fmt.Errorf("delete tasks: %w", err)
 	}
 
-	fmt.Printf("deleted %d old tasks\n", result.DeletedCount)
+	log.Info().Int64("count", result.DeletedCount).Msg("deleted old tasks")
 	return nil
 }
 
@@ -166,7 +167,7 @@ func (c *Cleaner) cleanupAuditLogs(ctx context.Context, cutoffDate time.Time) er
 		return fmt.Errorf("delete audit logs: %w", err)
 	}
 
-	fmt.Printf("deleted %d old audit logs\n", result.DeletedCount)
+	log.Info().Int64("count", result.DeletedCount).Msg("deleted old audit logs")
 	return nil
 }
 
@@ -235,7 +236,7 @@ func (c *Cleaner) archiveCollection(ctx context.Context, collection *mongo.Colle
 		return fmt.Errorf("cursor error: %w", err)
 	}
 
-	fmt.Printf("archived %d %s documents to %s\n", docCount, name, archiveFile)
+	log.Info().Int("count", docCount).Str("collection", name).Str("archive_file", archiveFile).Msg("archived documents")
 	return nil
 }
 
@@ -286,7 +287,7 @@ func (c *Cleaner) Restore(ctx context.Context, archiveFile string, collectionNam
 		docCount++
 	}
 
-	fmt.Printf("restored %d documents to %s\n", docCount, collectionName)
+	log.Info().Int("count", docCount).Str("collection", collectionName).Msg("restored documents")
 	return nil
 }
 

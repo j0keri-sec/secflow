@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/secflow/server/config"
 	"github.com/secflow/server/internal/api/handler"
@@ -72,6 +73,9 @@ func Router(
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	// Prometheus metrics endpoint — no auth required.
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// ── Static file serving for uploaded images (no auth required for nodes)
 	r.Static("/uploads", "./uploads")
