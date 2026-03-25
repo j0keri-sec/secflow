@@ -11,8 +11,10 @@ export const useArticleStore = defineStore('article', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   
-  // Cache
-  const cache = new Map<string, { data: Article; timestamp: number }>()
+  // Cache for article lists
+  const cache = new Map<string, { data: Article[]; timestamp: number }>()
+  // Cache for single articles
+  const articleCache = new Map<string, { data: Article; timestamp: number }>()
   const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   // Getters
@@ -48,8 +50,8 @@ export const useArticleStore = defineStore('article', () => {
     if (!params.page || params.page === 1) {
       const cached = cache.get(cacheKey)
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        articles.value = [cached.data]
-        total.value = 1
+        articles.value = cached.data
+        total.value = cached.data.length
         loading.value = false
         return cached.data
       }
@@ -69,7 +71,7 @@ export const useArticleStore = defineStore('article', () => {
       // Update cache
       if (!params.page || params.page === 1) {
         cache.set(cacheKey, {
-          data: articles.value[0] || articles.value,
+          data: articles.value,
           timestamp: Date.now()
         })
       }
@@ -87,26 +89,26 @@ export const useArticleStore = defineStore('article', () => {
   async function fetchArticle(id: string) {
     loading.value = true
     error.value = null
-    
+
     // Check cache
     const cacheKey = `article:${id}`
-    const cached = cache.get(cacheKey)
+    const cached = articleCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       currentArticle.value = cached.data
       loading.value = false
       return cached.data
     }
-    
+
     try {
       const res = await articleApi.get(id)
       currentArticle.value = res
-      
+
       // Update cache
-      cache.set(cacheKey, {
+      articleCache.set(cacheKey, {
         data: res,
         timestamp: Date.now()
       })
-      
+
       return res
     } catch (e: any) {
       error.value = e?.message || '获取文章详情失败'
@@ -123,8 +125,8 @@ export const useArticleStore = defineStore('article', () => {
       // Remove from list
       articles.value = articles.value.filter(a => a.id !== id)
       total.value = Math.max(0, total.value - 1)
-      // Clear cache
-      cache.delete(`article:${id}`)
+      // Clear from article cache
+      articleCache.delete(`article:${id}`)
       return true
     } catch (e: any) {
       error.value = e?.message || '删除文章失败'
@@ -134,6 +136,7 @@ export const useArticleStore = defineStore('article', () => {
 
   function clearCache() {
     cache.clear()
+    articleCache.clear()
   }
 
   function clearError() {

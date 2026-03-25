@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -864,8 +865,9 @@ func NavigateWithRetry(ctx context.Context, page *rod.Page, url string, config *
 
 // Helper function to get environment variable with default
 func getEnvOrDefault(key, defaultValue string) string {
-	// In production, use os.Getenv
-	// For now, return default
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
 	return defaultValue
 }
 

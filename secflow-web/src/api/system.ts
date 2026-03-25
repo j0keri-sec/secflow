@@ -1,5 +1,5 @@
 import http from '@/utils/http'
-import type { PageData } from '@/types'
+import type { PageData, AuditLog } from '@/types'
 
 // ── Push Channels ──────────────────────────────────────────────────────────
 export interface PushChannel {
@@ -8,18 +8,6 @@ export interface PushChannel {
   type: string
   enabled: boolean
   config: Record<string, string>
-  created_at: string
-}
-
-// ── Audit Logs ─────────────────────────────────────────────────────────────
-export interface AuditLog {
-  id: string
-  user_id: string
-  username: string
-  action: string
-  resource: string
-  detail: string
-  ip: string
   created_at: string
 }
 

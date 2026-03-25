@@ -271,9 +271,6 @@ const logs = ref<Array<{time: string, level: string, levelText: string, message:
 // 热点漏洞
 const hotVulns = ref<VulnRecord[]>([])
 
-// 计算在线节点数
-// const onlineNodes = computed(() => servers.value.filter(n => n.online).length)
-
 // 格式化时间
 const formatTime = (time: string) => {
   if (!time) return '--'
@@ -484,12 +481,6 @@ const getNodeStatus = (node: Node) => {
 const getNodeLoad = (node: Node) => {
   return `${Math.round(node.info?.cpu_pct || 0)}%`
 }
-
-// 获取节点延迟
-// const getNodeLatency = (node: Node) => {
-  // 延迟数据暂未提供，使用占位
-//   return '--'
-// }
 
 // 获取严重性样式类
 const getSeverityClass = (severity: string) => {

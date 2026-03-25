@@ -159,3 +159,15 @@ export interface DashboardStats {
   vuln_by_severity: Record<string, number>
   recent_vulns: VulnRecord[]
 }
+
+// ── Audit Log ───────────────────────────────────────────────────────────────
+export interface AuditLog {
+  id: string
+  user_id: string
+  username: string
+  action: string
+  resource: string
+  detail: string
+  ip: string
+  created_at: string
+}

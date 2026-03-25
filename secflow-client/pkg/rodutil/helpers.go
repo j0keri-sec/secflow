@@ -176,11 +176,7 @@ func ClickWithMove(element *rod.Element, page *rod.Page, waitForNav bool) error 
 			};
 		}
 	`
-	
-	// Try to get element position via JS first
-	elem, _ := page.Element("") // placeholder
-	_ = elem
-	
+
 	result, err := page.Eval(fmt.Sprintf(`%s`, script))
 	if err != nil {
 		// Fallback: just click the element
@@ -618,17 +614,6 @@ func ClearCookies(page *rod.Page) error {
 	`
 	_, err := page.Eval(script)
 	return err
-}
-
-// TakeScreenshot takes a screenshot of the page (useful for debugging).
-func TakeScreenshot(page *rod.Page, path string) error {
-	img, err := page.Screenshot(true, nil)
-	if err != nil {
-		return fmt.Errorf("take screenshot: %w", err)
-	}
-
-	_ = img
-	return nil
 }
 
 // distance calculates the distance between two points

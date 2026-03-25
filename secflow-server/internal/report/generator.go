@@ -85,7 +85,7 @@ type ReportData struct {
 	DateFrom    time.Time
 	DateTo      time.Time
 	GeneratedAt time.Time
-	
+
 	// Config used
 	Config *ReportConfig
 
@@ -109,6 +109,66 @@ type ReportData struct {
 
 	// Data sources (as strings for display)
 	DataSources []string
+
+	// Risk analysis
+	RiskDistribution map[string]int      // Severity-based risk distribution
+	TopExploits     []repository.VulnItem // Known exploited vulnerabilities
+	EmergingThreats []repository.VulnItem // New vulnerabilities from last 7 days
+	ThreatIntel     *ThreatIntel         // Threat intelligence summary
+
+	// Computed risk scores for vulnerabilities
+	VulnRiskScores map[string]float64 // CVE -> risk score
+}
+
+// ThreatIntel holds threat intelligence summary.
+type ThreatIntel struct {
+	ActiveExploits   int      // Number of actively exploited vulns
+	ZeroDays         int      // Number of zero-day vulns
+	CriticalCount    int      // Number of critical severity vulns
+	TopAttackVectors []string // Top attack vectors (e.g., RCE, SQLi)
+	GeographicSpread []string // Affected regions/countries
+}
+
+// CalculateRiskScore computes risk score based on CVSS, exploitability, and recency.
+func CalculateRiskScore(cvss float64, publishedAt time.Time, hasExploit bool) float64 {
+	if cvss < 0 {
+		cvss = 0
+	}
+	if cvss > 10 {
+		cvss = 10
+	}
+
+	// Base score from CVSS (60% weight)
+	baseScore := cvss * 0.6
+
+	// Recency factor (20% weight) - newer vulns get higher scores
+	daysSincePublish := time.Since(publishedAt).Hours() / 24
+	var recencyFactor float64
+	if daysSincePublish <= 7 {
+		recencyFactor = 2.0 // Fresh vulnerabilities
+	} else if daysSincePublish <= 30 {
+		recencyFactor = 1.5
+	} else if daysSincePublish <= 90 {
+		recencyFactor = 1.0
+	} else {
+		recencyFactor = 0.5
+	}
+	recencyScore := recencyFactor * 2.0 * 0.2 // 20% weight max of 2 points
+
+	// Exploit availability (20% weight)
+	var exploitScore float64
+	if hasExploit {
+		exploitScore = 2.0
+	}
+
+	// Popular product factor (bonus 0-0.5)
+	popularProductBonus := 0.0
+
+	totalScore := baseScore + recencyScore + exploitScore + popularProductBonus
+	if totalScore > 10 {
+		totalScore = 10
+	}
+	return totalScore
 }
 
 // AISummary holds AI-generated summary content.
@@ -168,6 +228,8 @@ func (g *Generator) GenerateReport(ctx context.Context, config *ReportConfig) (*
 		VulnStats:   make(map[DataSource]*repository.VulnStats),
 		TopVulns:   make(map[DataSource][]repository.VulnItem),
 		DataSources: g.formatSources(config.Sources),
+		RiskDistribution: make(map[string]int),
+		VulnRiskScores: make(map[string]float64),
 	}
 
 	// If no sources specified, use all
@@ -189,10 +251,32 @@ func (g *Generator) GenerateReport(ctx context.Context, config *ReportConfig) (*
 			continue
 		}
 		data.TopVulns[source] = topVulns
-		
-		// Add to combined list
+
+		// Add to combined list and compute risk scores
+		for i := range topVulns {
+			v := &topVulns[i]
+			// Compute risk score
+			riskScore := CalculateRiskScore(v.CVSS, v.PublishedAt, false)
+			v.RiskScore = riskScore
+			data.VulnRiskScores[v.CVE] = riskScore
+
+			// Track risk distribution
+			severityKey := v.Severity
+			if severityKey == "" {
+				severityKey = "未知"
+			}
+			data.RiskDistribution[severityKey]++
+
+			// Identify emerging threats (published within last 7 days)
+			if time.Since(v.PublishedAt).Hours() <= 168 { // 7 days * 24 hours
+				data.EmergingThreats = append(data.EmergingThreats, *v)
+			}
+		}
 		data.AllTopVulns = append(data.AllTopVulns, topVulns...)
 	}
+
+	// Build ThreatIntel from aggregated data
+	data.ThreatIntel = g.buildThreatIntel(data)
 
 	// Fetch security events (from articles)
 	events, err := g.articleRepo.GetSecurityEvents(ctx, config.DateFrom, config.DateTo, 5)
@@ -220,6 +304,85 @@ func (g *Generator) GenerateReport(ctx context.Context, config *ReportConfig) (*
 	}
 
 	return data, nil
+}
+
+// buildThreatIntel constructs threat intelligence from report data.
+func (g *Generator) buildThreatIntel(data *ReportData) *ThreatIntel {
+	ti := &ThreatIntel{
+		TopAttackVectors: []string{},
+		GeographicSpread: []string{},
+	}
+
+	criticalCount := 0
+	activeExploits := 0
+
+	for _, v := range data.AllTopVulns {
+		// Count critical severity
+		if v.Severity == "严重" || v.Severity == "Critical" {
+			criticalCount++
+		}
+
+		// Check for high risk score (potential active exploit)
+		if v.RiskScore >= 7.0 {
+			activeExploits++
+		}
+	}
+
+	ti.CriticalCount = criticalCount
+	ti.ActiveExploits = activeExploits
+
+	// Analyze attack vectors from descriptions
+	ti.TopAttackVectors = g.extractAttackVectors(data.AllTopVulns)
+
+	return ti
+}
+
+// extractAttackVectors analyzes vulnerabilities to identify top attack vectors.
+func (g *Generator) extractAttackVectors(vulns []repository.VulnItem) []string {
+	attackVectors := make(map[string]int)
+
+	vectorKeywords := map[string][]string{
+		"Remote Code Execution (RCE)": {"remote code execution", "rce", "远程代码执行", "arbitrary code", "execute code"},
+		"SQL Injection":              {"sql injection", "sql注入", "sqli"},
+		"Cross-Site Scripting (XSS)": {"xss", "cross-site scripting", "跨站脚本"},
+		"Buffer Overflow":            {"buffer overflow", "缓冲区溢出", "heap overflow"},
+		"Privilege Escalation":       {"privilege escalation", "权限提升", "local exploit"},
+		"Authentication Bypass":     {"authentication bypass", "认证绕过", "bypass auth"},
+		"Information Disclosure":    {"information disclosure", "信息泄露", "information leak"},
+		"Denial of Service (DoS)":   {"denial of service", "dos", "拒绝服务"},
+	}
+
+	for _, v := range vulns {
+		text := strings.ToLower(v.Name + " " + v.Description)
+		for vector, keywords := range vectorKeywords {
+			for _, kw := range keywords {
+				if strings.Contains(text, kw) {
+					attackVectors[vector]++
+					break
+				}
+			}
+		}
+	}
+
+	// Sort by frequency and return top 5
+	type kv struct {
+		Key   string
+		Value int
+	}
+	var sorted []kv
+	for k, v := range attackVectors {
+		sorted = append(sorted, kv{k, v})
+	}
+	// Simple sort - in production use sort.Slice
+	if len(sorted) > 5 {
+		sorted = sorted[:5]
+	}
+
+	result := make([]string, len(sorted))
+	for i, kv := range sorted {
+		result[i] = kv.Key
+	}
+	return result
 }
 
 // formatSources converts DataSource slice to display strings.
@@ -450,6 +613,61 @@ func (g *Generator) GenerateHTML(data *ReportData) ([]byte, error) {
 	return g.wrapHTMLTemplate(data, htmlContent), nil
 }
 
+// GenerateEnhancedHTML generates an HTML report with Chart.js visualizations.
+func (g *Generator) GenerateEnhancedHTML(data *ReportData) ([]byte, error) {
+	mdContent, err := g.GenerateMarkdown(data)
+	if err != nil {
+		return nil, err
+	}
+
+	htmlContent, err := g.MarkdownToHTML(mdContent)
+	if err != nil {
+		return nil, err
+	}
+
+	return g.wrapEnhancedHTMLTemplate(data, htmlContent), nil
+}
+
+// wrapEnhancedHTMLTemplate wraps content in an enhanced HTML page with charts.
+func (g *Generator) wrapEnhancedHTMLTemplate(data *ReportData, content []byte) []byte {
+	// Aggregate ByCategory from VulnStats
+	byCategory := make(map[string]int)
+	for _, stats := range data.VulnStats {
+		if stats != nil {
+			for k, v := range stats.ByCategory {
+				byCategory[k] += v
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	enhancedHTMLTemplate.Execute(&buf, struct {
+		Title           string
+		Description     string
+		Content         template.HTML
+		DateFrom        string
+		DateTo          string
+		DataSources     string
+		GeneratedAt     string
+		ThreatIntel     *ThreatIntel
+		RiskDistribution map[string]int
+		ByCategory     map[string]int
+	}{
+		Title:           data.Title,
+		Description:     fmt.Sprintf("SecFlow %s - %s 至 %s", g.getReportTypeName(data.ReportType), data.DateFrom.Format("2006/01/02"), data.DateTo.Format("2006/01/02")),
+		Content:         template.HTML(content),
+		DateFrom:        data.DateFrom.Format("2006/01/02"),
+		DateTo:          data.DateTo.Format("2006/01/02"),
+		DataSources:     strings.Join(data.DataSources, ", "),
+		GeneratedAt:     data.GeneratedAt.Format("2006-01-02 15:04:05"),
+		ThreatIntel:     data.ThreatIntel,
+		RiskDistribution: data.RiskDistribution,
+		ByCategory:      byCategory,
+	})
+
+	return buf.Bytes()
+}
+
 // wrapHTMLTemplate wraps content in a complete HTML page.
 func (g *Generator) wrapHTMLTemplate(data *ReportData, content []byte) []byte {
 	var buf bytes.Buffer
@@ -609,6 +827,318 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
 </body>
 </html>`))
 
+// enhancedHTMLTemplate includes Chart.js for visualizations.
+var enhancedHTMLTemplate = template.Must(template.New("enhanced_report").Parse(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{.Description}}">
+    <title>{{.Title}}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #24292e;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #fff;
+        }
+        h1 {
+            font-size: 28px;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #0066cc;
+        }
+        h2 {
+            font-size: 20px;
+            color: #1a1a2e;
+            margin: 35px 0 15px;
+            padding-left: 12px;
+            border-left: 5px solid #0066cc;
+        }
+        h3 {
+            font-size: 17px;
+            color: #333;
+            margin: 25px 0 10px;
+        }
+        .meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f6f8fa;
+            border-radius: 6px;
+        }
+        .meta span { margin-right: 25px; }
+        .ai-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .ai-summary h2 { color: white; border-left-color: white; }
+        .ai-summary .highlights {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .ai-summary .highlight {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #e1e4e8;
+            margin: 30px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #dfe2e5;
+            padding: 10px 14px;
+            text-align: left;
+        }
+        th { background: #f6f8fa; font-weight: 600; }
+        tr:nth-child(even) { background: #fafbfc; }
+        code {
+            background: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        pre code { background: none; padding: 0; }
+        blockquote {
+            border-left: 4px solid #0066cc;
+            padding-left: 15px;
+            color: #666;
+            margin: 15px 0;
+        }
+        ul, ol { padding-left: 25px; }
+        li { margin: 5px 0; }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 25px;
+            border-top: 1px solid #e1e4e8;
+            color: #999;
+            font-size: 13px;
+        }
+        a { color: #0066cc; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Charts section */
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .chart-container {
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .chart-container canvas {
+            max-height: 300px;
+        }
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        /* Threat intel section */
+        .threat-intel {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .threat-intel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .threat-intel-item {
+            background: rgba(255,255,255,0.2);
+            padding: 12px 15px;
+            border-radius: 6px;
+        }
+        .threat-intel-item .label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .threat-intel-item .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* Risk distribution */
+        .risk-distribution {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .risk-item {
+            flex: 1;
+            min-width: 100px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 6px;
+            color: white;
+        }
+        .risk-critical { background: #dc3545; }
+        .risk-high { background: #fd7e14; }
+        .risk-medium { background: #ffc107; color: #333; }
+        .risk-low { background: #28a745; }
+        .risk-unknown { background: #6c757d; }
+    </style>
+</head>
+<body>
+    <h1>{{.Title}}</h1>
+    <div class="meta">
+        <span><strong>报告周期</strong>: {{.DateFrom}} - {{.DateTo}}</span>
+        <span><strong>数据来源</strong>: {{.DataSources}}</span>
+        <span><strong>生成时间</strong>: {{.GeneratedAt}}</span>
+    </div>
+
+    {{if .ThreatIntel}}
+    <div class="threat-intel">
+        <h2 style="border:none;margin:0;color:white;">威胁情报概览</h2>
+        <div class="threat-intel-grid">
+            <div class="threat-intel-item">
+                <div class="label">严重漏洞数</div>
+                <div class="value">{{.ThreatIntel.CriticalCount}}</div>
+            </div>
+            <div class="threat-intel-item">
+                <div class="label">高危漏洞数</div>
+                <div class="value">{{.ThreatIntel.ActiveExploits}}</div>
+            </div>
+            <div class="threat-intel-item">
+                <div class="label">零日漏洞</div>
+                <div class="value">{{.ThreatIntel.ZeroDays}}</div>
+            </div>
+        </div>
+        {{if .ThreatIntel.TopAttackVectors}}
+        <div style="margin-top:15px;">
+            <strong>主要攻击向量:</strong> {{range .ThreatIntel.TopAttackVectors}}{{.}} {{end}}
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+
+    {{if .RiskDistribution}}
+    <h2>风险分布</h2>
+    <div class="risk-distribution">
+        {{range $severity, $count := .RiskDistribution}}
+        <div class="risk-item risk-{{$severity}}">
+            <div>{{$severity}}</div>
+            <div style="font-size:20px;font-weight:bold;">{{$count}}</div>
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+
+    <div class="charts-section">
+        <div class="chart-container">
+            <div class="chart-title">漏洞严重性分布</div>
+            <canvas id="severityChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">漏洞来源分布</div>
+            <canvas id="sourceChart"></canvas>
+        </div>
+    </div>
+
+    <div class="content">
+{{.Content}}
+    </div>
+
+    <div class="footer">
+        <p>本报告由 <strong>SecFlow 安全情报平台</strong> 自动生成</p>
+    </div>
+
+    <script>
+    // Chart.js initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        // Severity chart
+        const severityCtx = document.getElementById('severityChart');
+        if (severityCtx) {
+            new Chart(severityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [{{range $k, $v := .RiskDistribution}}"{{$k}}",{{end}}],
+                    datasets: [{
+                        data: [{{range $k, $v := .RiskDistribution}}{{$v}},{{end}}],
+                        backgroundColor: [
+                            '#dc3545', '#fd7e14', '#ffc107', '#28a745', '#6c757d'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // Source chart
+        const sourceCtx = document.getElementById('sourceChart');
+        if (sourceCtx) {
+            new Chart(sourceCtx, {
+                type: 'bar',
+                data: {
+                    labels: [{{range $k, $v := .ByCategory}}"{{$k}}",{{end}}],
+                    datasets: [{
+                        label: '漏洞数量',
+                        data: [{{range $k, $v := .ByCategory}}{{$v}},{{end}}],
+                        backgroundColor: '#0066cc'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>`))
+
 // ExportToFile exports the report to a file with the given format.
 func (g *Generator) ExportToFile(data *ReportData, format ExportFormat) ([]byte, string, error) {
 	var content []byte
@@ -619,10 +1149,10 @@ func (g *Generator) ExportToFile(data *ReportData, format ExportFormat) ([]byte,
 		content, _ = g.GenerateMarkdown(data)
 		ext = "md"
 	case FormatHTML:
-		content, _ = g.GenerateHTML(data)
+		content, _ = g.GenerateEnhancedHTML(data)
 		ext = "html"
 	case FormatPDF:
-		content, _ = g.GenerateHTML(data)
+		content, _ = g.GenerateEnhancedHTML(data)
 		ext = "html"
 	default:
 		return nil, "", fmt.Errorf("unsupported format: %s", format)

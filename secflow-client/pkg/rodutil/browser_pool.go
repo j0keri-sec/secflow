@@ -138,9 +138,9 @@ func (p *PagePool) newPage(_ context.Context) (*rod.Page, error) {
 }
 
 // enableStealth applies stealth evasion measures to the page.
+// TODO: Implement proper stealth mode using rod's stealth features
+// or remove if not needed (currently a placeholder).
 func (p *PagePool) enableStealth(page *rod.Page) error {
-	// Use rod's built-in stealth functionality
-	// Just set some basic anti-detection measures
 	return nil
 }
 

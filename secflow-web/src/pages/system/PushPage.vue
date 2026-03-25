@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { systemApi } from '@/api/system'
-
-interface PushChannel {
-  id: string
-  name: string
-  type: string
-  enabled: boolean
-  config: Record<string, string>
-  created_at: string
-}
+import { systemApi, type PushChannel } from '@/api/system'
 
 const channels = ref<PushChannel[]>([])
 const loading = ref(true)

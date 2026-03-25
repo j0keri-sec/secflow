@@ -2,17 +2,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { systemApi } from '@/api/system'
 import { Search } from '@element-plus/icons-vue'
-
-interface AuditLog {
-  id: string
-  user_id: string
-  username: string
-  action: string
-  resource: string
-  detail: string
-  ip: string
-  created_at: string
-}
+import type { AuditLog } from '@/types'
 
 const items = ref<AuditLog[]>([])
 const total = ref(0)

@@ -1,5 +1,5 @@
 import http from '@/utils/http'
-import type { VulnRecord, VulnStats, Node, PageData } from '@/types'
+import type { VulnRecord, VulnStats, Node, PageData, AuditLog } from '@/types'
 
 // Dashboard 统计数据
 export interface DashboardStats {
@@ -23,16 +23,6 @@ export interface HotVuln {
   cvss: string
   source: string
   time: string
-  created_at: string
-}
-
-// 审计日志
-export interface AuditLog {
-  id: string
-  username: string
-  action: string
-  resource: string
-  ip: string
   created_at: string
 }
 

@@ -175,7 +175,7 @@ func (s *MinimaxService) Summarize(ctx context.Context, data *ReportData) (*AISu
 func (s *MinimaxService) buildSummarizePrompt(data *ReportData) string {
 	var buf bytes.Buffer
 
-	buf.WriteString("请分析以下安全周报数据，生成简洁的摘要：\n\n")
+	buf.WriteString("请分析以下安全周报数据，生成专业的安全态势分析报告：\n\n")
 
 	// Add stats
 	buf.WriteString("【漏洞统计】\n")
@@ -183,22 +183,61 @@ func (s *MinimaxService) buildSummarizePrompt(data *ReportData) string {
 		data.DateFrom.Format("2006/01/02"), data.DateTo.Format("2006/01/02")))
 
 	totalVulns := 0
+	criticalCount := 0
+	highCount := 0
 	for _, stats := range data.VulnStats {
 		if stats != nil {
 			totalVulns += stats.Total
+			criticalCount += stats.BySeverity["严重"]
+			criticalCount += stats.BySeverity["Critical"]
+			highCount += stats.BySeverity["高危"]
+			highCount += stats.BySeverity["High"]
 		}
 	}
-	buf.WriteString(fmt.Sprintf("本周共收录漏洞：%d 个\n\n", totalVulns))
+	buf.WriteString(fmt.Sprintf("本周共收录漏洞：%d 个（严重: %d, 高危: %d）\n\n", totalVulns, criticalCount, highCount))
 
-	// Add top vulnerabilities
+	// Risk distribution
+	if len(data.RiskDistribution) > 0 {
+		buf.WriteString("【风险分布】\n")
+		for sev, count := range data.RiskDistribution {
+			buf.WriteString(fmt.Sprintf("- %s: %d\n", sev, count))
+		}
+		buf.WriteString("\n")
+	}
+
+	// Add top vulnerabilities with CVSS if available
 	if len(data.AllTopVulns) > 0 {
 		buf.WriteString("【重点漏洞 TOP 5】\n")
 		for i, v := range data.AllTopVulns {
 			if i >= 5 {
 				break
 			}
-			buf.WriteString(fmt.Sprintf("%d. %s (%s)\n", i+1, v.Name, v.CVE))
+			cvssStr := ""
+			if v.CVSS > 0 {
+				cvssStr = fmt.Sprintf(" CVSS: %.1f", v.CVSS)
+			}
+			buf.WriteString(fmt.Sprintf("%d. %s (%s)%s\n", i+1, v.Name, v.CVE, cvssStr))
 		}
+		buf.WriteString("\n")
+	}
+
+	// Emerging threats
+	if len(data.EmergingThreats) > 0 {
+		buf.WriteString("【新兴威胁】\n")
+		buf.WriteString(fmt.Sprintf("过去7天新增漏洞: %d个\n", len(data.EmergingThreats)))
+		for i, v := range data.EmergingThreats {
+			if i >= 3 {
+				break
+			}
+			buf.WriteString(fmt.Sprintf("- %s (%s)\n", v.Name, v.CVE))
+		}
+		buf.WriteString("\n")
+	}
+
+	// Threat intel
+	if data.ThreatIntel != nil && len(data.ThreatIntel.TopAttackVectors) > 0 {
+		buf.WriteString("【攻击向量分析】\n")
+		buf.WriteString(fmt.Sprintf("主要攻击向量: %s\n", strings.Join(data.ThreatIntel.TopAttackVectors, ", ")))
 		buf.WriteString("\n")
 	}
 
@@ -214,11 +253,12 @@ func (s *MinimaxService) buildSummarizePrompt(data *ReportData) string {
 		buf.WriteString("\n")
 	}
 
-	buf.WriteString("请生成以下格式的摘要：\n")
-	buf.WriteString("【概况】一句话总结本周安全态势\n")
-	buf.WriteString("【重点】列出2-3个最值得关注的问题\n")
-	buf.WriteString("【建议】给出简要的安全改进建议\n")
-	buf.WriteString("【趋势】分析漏洞趋势（上升/下降/持平）\n")
+	buf.WriteString("请生成以下格式的专业分析报告：\n\n")
+	buf.WriteString("【执行摘要】用2-3句话总结本周安全态势总体情况\n")
+	buf.WriteString("【主要风险】列出Top 3风险，包含严重程度和受影响范围\n")
+	buf.WriteString("【推荐行动】按优先级列出3-5个具体的安全改进措施\n")
+	buf.WriteString("【威胁态势】分析整体威胁趋势和关键发现\n\n")
+	buf.WriteString("注意：回复应该简洁、专业，适合安全管理层阅读。\n")
 
 	return buf.String()
 }

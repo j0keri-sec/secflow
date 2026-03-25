@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -80,6 +82,31 @@ func (r *VulnRepo) GetStatsByDateRange(ctx context.Context, dateFrom, dateTo tim
 		stats.ByCategory[category] = result.Count
 	}
 
+	// Get counts by severity
+	severityPipeline := []bson.M{
+		{"$match": filter},
+		{"$group": bson.M{"_id": "$severity", "count": bson.M{"$sum": 1}}},
+	}
+
+	severityCursor, err := coll.Aggregate(ctx, severityPipeline)
+	if err == nil {
+		defer severityCursor.Close(ctx)
+		for severityCursor.Next(ctx) {
+			var sevResult struct {
+				ID    string `bson:"_id"`
+				Count int    `bson:"count"`
+			}
+			if err := severityCursor.Decode(&sevResult); err != nil {
+				continue
+			}
+			severity := sevResult.ID
+			if severity == "" {
+				severity = "未知"
+			}
+			stats.BySeverity[severity] = sevResult.Count
+		}
+	}
+
 	return stats, nil
 }
 
@@ -132,16 +159,31 @@ func (r *VulnRepo) GetTopVulns(ctx context.Context, dateFrom, dateTo time.Time, 
 		if err := cursor.Decode(&v); err != nil {
 			continue
 		}
+		// Extract tags from model if available
+		tags := v.Tags
+		if tags == nil {
+			tags = []string{}
+		}
+
+		// Extract product from title/description
+		product := extractProduct(v.Title, v.Description)
+
+		// Extract CVSS from description if available
+		cvss := extractCVSS(v.Description)
+
 		items = append(items, VulnItem{
-			Number:     num,
-			Name:       v.Title,
-			CVE:        v.CVE,
-			Severity:   string(v.Severity),
-			Vendor:     extractVendor(v.Title),
-			Product:    "",
-			Description: v.Description,
-			Solutions:  v.Solutions,
-			Source:     v.Source,
+			Number:       num,
+			Name:         v.Title,
+			CVE:          v.CVE,
+			Severity:     string(v.Severity),
+			Vendor:       extractVendor(v.Title),
+			Product:      product,
+			CVSS:         cvss,
+			Description:  v.Description,
+			Solutions:    v.Solutions,
+			Source:       v.Source,
+			PublishedAt:  v.CreatedAt,
+			Tags:         tags,
 		})
 		num++
 	}
@@ -151,15 +193,19 @@ func (r *VulnRepo) GetTopVulns(ctx context.Context, dateFrom, dateTo time.Time, 
 
 // VulnItem represents a vulnerability for reports.
 type VulnItem struct {
-	Number     int
-	Name       string
-	CVE        string
-	Severity   string
-	Vendor     string
-	Product    string
-	Description string
-	Solutions  string
-	Source     string
+	Number       int
+	Name         string
+	CVE          string
+	Severity     string
+	Vendor       string
+	Product      string
+	CVSS         float64     // CVSS score if available (0-10)
+	Description  string
+	Solutions    string
+	Source       string
+	PublishedAt  time.Time   // Publication date for time-series analysis
+	Tags         []string     // For categorization
+	RiskScore    float64      // Calculated risk score
 }
 
 // ArticleListFilter defines filter options for listing articles.
@@ -243,5 +289,56 @@ func extractVendor(title string) string {
 		}
 	}
 	return ""
+}
+
+// extractProduct attempts to extract product name from vulnerability title/description.
+func extractProduct(title, description string) string {
+	products := []string{
+		"Windows", "macOS", "Linux", "iOS", "Android", "Chrome", "Firefox", "Edge",
+		"Office", "Word", "Excel", "PowerPoint", "Outlook", "Exchange", "SharePoint",
+		"Azure", "AWS", " GCP", "Cloud", "vmware", "ESXi", "vCenter",
+		"Apache HTTP Server", "Nginx", "Tomcat", "JBoss", "WebLogic", "WebSphere",
+		"MySQL", "PostgreSQL", "MongoDB", "Redis", "Elasticsearch", "Oracle DB",
+		"SQL Server", "Exchange Server", "Active Directory", "SMB", "RDP", "SSH",
+		"OpenSSH", "WordPress", "Drupal", "Joomla", "Magento", "Shopify",
+		"ChromeOS", "VMware Workstation", "VirtualBox", "Hyper-V",
+	}
+
+	text := title + " " + description
+	textLower := strings.ToLower(text)
+	for _, p := range products {
+		if strings.Contains(textLower, strings.ToLower(p)) {
+			return p
+		}
+	}
+	return ""
+}
+
+// extractCVSS attempts to extract CVSS score from description text.
+// Looks for patterns like "CVSS: 3.1/9.8" or "CVSS: 9.8".
+func extractCVSS(description string) float64 {
+	// Pattern to match CVSS scores in description
+	patterns := []string{
+		`CVSS:[\s]*([0-9]+\.?[0-9]*)`,
+		`CVSS[\s_]*(?:v[0-9\.]+[\s/]*)?([0-9]+\.?[0-9]*)`,
+		`(?:base)?[\s]*score[\s]*[:\s]*([0-9]+\.?[0-9]*)`,
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(strings.ToUpper(description))
+		if len(matches) > 1 {
+			if cvss, err := strconv.ParseFloat(matches[1], 64); err == nil {
+				if cvss >= 0 && cvss <= 10 {
+					return cvss
+				}
+				// Handle cases like "9.8" which means 9.8
+				if cvss > 10 && cvss <= 100 {
+					return cvss / 10
+				}
+			}
+		}
+	}
+	return 0
 }
 

@@ -90,16 +90,12 @@ func main() {
 	systemH := handler.NewSystemHandler(scheduleRepo)
 
 	// ── WebSocket Hub ──────────────────────────────────────────────────────
-	// Create node handler with scheduler reference
-	nodeH := handler.NewNodeHandlerWithScheduler(nodeRepo, taskRepo, vulnRepo, articleRepo, q, nil, cfg.Node.TokenKey, taskScheduler)
-	// Create hub with node handler callbacks
-	hub := ws.NewHub(nodeH.OnMessage, nodeH.OnConnect, nodeH.OnDisconnect)
-	// Inject hub into scheduler (circular dependency)
+	// Create hub with node handler callbacks (hub needs handler methods, so create handler first with temp nil hub)
+	tempNodeH := handler.NewNodeHandlerWithScheduler(nodeRepo, taskRepo, vulnRepo, articleRepo, q, nil, cfg.Node.TokenKey, taskScheduler)
+	hub := ws.NewHub(tempNodeH.OnMessage, tempNodeH.OnConnect, tempNodeH.OnDisconnect)
+	// Inject hub into scheduler and create final node handler with hub
 	taskScheduler.SetHub(hub)
-	// Inject hub into node handler
-	nodeH.Hub = hub
-	// Inject the hub into the node handler (circular dependency resolved by pointer).
-	nodeHwithHub := handler.NewNodeHandlerWithScheduler(nodeRepo, taskRepo, vulnRepo, articleRepo, q, hub, cfg.Node.TokenKey, taskScheduler)
+	nodeH := handler.NewNodeHandlerWithScheduler(nodeRepo, taskRepo, vulnRepo, articleRepo, q, hub, cfg.Node.TokenKey, taskScheduler)
 
 	// ── Task Generator (automatically creates crawl tasks) ──────────────────
 	// Default sources: all rod-based grabbers
@@ -121,7 +117,7 @@ func main() {
 		authSvc,
 		handler.NewAuthHandler(userRepo, invRepo, auditRepo, authSvc),
 		handler.NewVulnHandler(vulnRepo),
-		nodeHwithHub,
+		nodeH,
 		taskH,
 		handler.NewUserHandler(userRepo),
 		handler.NewArticleHandler(articleRepo),
@@ -132,7 +128,6 @@ func main() {
 	)
 	// Inject scheduler into task handler for stop functionality
 	taskH.SetScheduler(taskScheduler)
-	_ = nodeH // suppress unused warning
 
 	// ── HTTP Server ────────────────────────────────────────────────────────
 	srv := &http.Server{
