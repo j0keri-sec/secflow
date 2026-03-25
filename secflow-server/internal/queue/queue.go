@@ -6,10 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -593,7 +593,7 @@ func (q *Queue) DequeueBatch(ctx context.Context, n int) ([]TaskMessage, error) 
 	for _, item := range result {
 		var msg TaskMessage
 		if err := json.Unmarshal([]byte(item), &msg); err != nil {
-			log.Printf("Failed to unmarshal task: %v", err)
+			log.Error().Err(err).Msg("failed to unmarshal task")
 			continue
 		}
 		tasks = append(tasks, msg)
@@ -636,7 +636,7 @@ func (q *Queue) DequeueBatchPriority(ctx context.Context, n int) ([]TaskMessage,
 		
 		var msg TaskMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Printf("Failed to unmarshal task: %v", err)
+			log.Error().Err(err).Msg("failed to unmarshal task")
 			continue
 		}
 		
@@ -653,7 +653,7 @@ func (q *Queue) DequeueBatchPriority(ctx context.Context, n int) ([]TaskMessage,
 	}
 
 	if _, err := pipe.Exec(ctx); err != nil {
-		log.Printf("Failed to cleanup priority queue: %v", err)
+		log.Error().Err(err).Msg("failed to cleanup priority queue")
 	}
 
 	return tasks, nil
