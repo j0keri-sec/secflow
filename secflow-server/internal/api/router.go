@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -67,6 +68,7 @@ func Router(
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS(cfg.Server.CORSOrigins))
 	r.Use(middleware.RequestID())
+	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(gzipMiddleware())
 
 	// Health probe — no auth required.

@@ -2,8 +2,10 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -124,5 +126,34 @@ func CORS(allowedOrigins []string) gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+// Timeout returns a middleware that adds a request timeout context.
+// If a request takes longer than the specified duration, it aborts with 504 Gateway Timeout.
+// This prevents slow requests from blocking the server indefinitely.
+func Timeout(timeout time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
+		defer cancel()
+
+		c.Request = c.Request.WithContext(ctx)
+
+		done := make(chan struct{})
+		go func() {
+			c.Next()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			// Request completed normally
+			return
+		case <-ctx.Done():
+			c.AbortWithStatusJSON(http.StatusGatewayTimeout, gin.H{
+				"error": "request timeout",
+				"code":  504,
+			})
+		}
 	}
 }

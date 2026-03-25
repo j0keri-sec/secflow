@@ -17,6 +17,9 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
+// defaultTimeout is the default timeout for background operations.
+const defaultTimeout = 30 * time.Second
+
 // NodeHandler manages client node registration and status.
 type NodeHandler struct {
 	nodeRepo     *repository.NodeRepo
@@ -170,8 +173,10 @@ func (h *NodeHandler) OnMessage(nodeID string, msg *ws.Message) {
 
 // OnConnect is called when a node connects.
 func (h *NodeHandler) OnConnect(nodeID string) {
-	_ = h.nodeRepo.SetStatus(context.Background(), nodeID, model.NodeOnline)
-	_ = h.queue.Heartbeat(context.Background(), nodeID)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+	_ = h.nodeRepo.SetStatus(ctx, nodeID, model.NodeOnline)
+	_ = h.queue.Heartbeat(ctx, nodeID)
 }
 
 // updateNodeInfoFromHeartbeat updates node info from heartbeat payload.
@@ -246,7 +251,9 @@ func (h *NodeHandler) updateNodeInfoFromHeartbeat(ctx context.Context, nodeID st
 
 // OnDisconnect is called when a node disconnects.
 func (h *NodeHandler) OnDisconnect(nodeID string) {
-	_ = h.nodeRepo.SetStatus(context.Background(), nodeID, model.NodeOffline)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+	_ = h.nodeRepo.SetStatus(ctx, nodeID, model.NodeOffline)
 }
 
 // handleTaskResult processes the completed task result from a client.
@@ -483,10 +490,11 @@ func (h *NodeHandler) decrementTaskCount(nodeID string, taskID string) {
 	if h.Hub != nil {
 		h.Hub.DecTaskCount(nodeID)
 	}
-	
+
 	// Update node task stats for successful task completion
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
 	if h.nodeRepo != nil {
-		ctx := context.Background()
 		if node, err := h.nodeRepo.GetByNodeID(ctx, nodeID); err == nil && node != nil {
 			node.TaskStats.TotalTasks++
 			node.TaskStats.SuccessTasks++
@@ -495,9 +503,9 @@ func (h *NodeHandler) decrementTaskCount(nodeID string, taskID string) {
 			_ = h.nodeRepo.UpdateTaskStats(ctx, nodeID, node.TaskStats)
 		}
 	}
-	
+
 	// Mark task as done
-	h.completeTask(context.Background(), taskID)
+	h.completeTask(ctx, taskID)
 }
 
 // completeTask marks a task as completed.
