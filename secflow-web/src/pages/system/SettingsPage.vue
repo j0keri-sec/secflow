@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logger from '@/utils/logger'
 import { ref, reactive, onMounted } from 'vue'
 import { systemApi, type TaskSchedule } from '@/api/system'
 import { ElMessage } from 'element-plus'
@@ -53,7 +54,7 @@ async function fetchSchedules() {
       }
     }
   } catch (error) {
-    console.error('Failed to load schedules:', error)
+    logger.error('Failed to load schedules:', error)
     ElMessage.error('加载配置失败')
   } finally {
     loading.value = false
@@ -72,7 +73,7 @@ async function saveVulnSchedule() {
     ElMessage.success('漏洞爬取调度已更新')
     await fetchSchedules()
   } catch (error) {
-    console.error('Failed to save vuln schedule:', error)
+    logger.error('Failed to save vuln schedule:', error)
     ElMessage.error('保存失败')
   } finally {
     saving.value = false
@@ -91,7 +92,7 @@ async function saveArticleSchedule() {
     ElMessage.success('文章爬取调度已更新')
     await fetchSchedules()
   } catch (error) {
-    console.error('Failed to save article schedule:', error)
+    logger.error('Failed to save article schedule:', error)
     ElMessage.error('保存失败')
   } finally {
     saving.value = false

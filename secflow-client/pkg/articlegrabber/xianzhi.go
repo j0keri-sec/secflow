@@ -4,8 +4,9 @@ package articlegrabber
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ import (
 	md "github.com/JohannesKaufmann/html-to-markdown"
 )
 
-// XianzhiGrabber fetches articles from xianzhi community (xz.aliyun.com).
+// XianzhiGrabber fetches articles from xianzhi community (xz.aliyun.com) via RSS feed + Rod detail.
 type XianzhiGrabber struct {
 	*RodCrawler
 	client *req.Client
@@ -36,513 +37,370 @@ func (g *XianzhiGrabber) Name() string {
 	return "xianzhi"
 }
 
-// Fetch retrieves articles from xianzhi community.
-func (g *XianzhiGrabber) Fetch(ctx context.Context, limit int) ([]*Article, error) {
-	// Initialize session with rod to get cookies and bypass WAF
-	if err := g.initSession(ctx); err != nil {
-		g.LogWarn("Failed to init session: %v", err)
+// AtomFeed represents the RSS/Atom feed structure from xianzhi.
+type AtomFeed struct {
+	Title   string `xml:"title"`
+	Updated string `xml:"updated"`
+	Entries []AtomEntry `xml:"entry"`
+}
+
+// AtomEntry represents a single entry in the Atom feed.
+type AtomEntry struct {
+	Title     string `xml:"title"`
+	Link      string `xml:"link"` // Custom unmarshal needed for attribute
+	Published string `xml:"published"`
+	Updated   string `xml:"updated"`
+	Summary   string `xml:"summary"`
+	ID        string `xml:"id"`
+}
+
+// GetLink returns the link URL from the entry.
+func (e *AtomEntry) GetLink() string {
+	if e.Link != "" {
+		return e.Link
 	}
+	return e.ID
+}
 
-	// Calculate pages needed (each page returns up to 20 items typically)
-	pageSize := 20
-	pageNo := 1
-	totalFetched := 0
-
+// Fetch retrieves articles from xianzhi community via RSS + detail scraping.
+func (g *XianzhiGrabber) Fetch(ctx context.Context, limit int) ([]*Article, error) {
 	articles := make([]*Article, 0)
 
-	for totalFetched < limit {
-		remaining := limit - totalFetched
-		if remaining < pageSize {
-			pageSize = remaining
-		}
+	// Step 1: Fetch RSS feed for article list
+	g.LogInfo("Fetching RSS feed from xianzhi community...")
+	
+	httpReq := g.client.R().SetContext(ctx)
+	resp, err := httpReq.Get("https://xz.aliyun.com/feed")
+	if err != nil {
+		g.LogWarn("Failed to fetch RSS feed: %v", err)
+		return nil, fmt.Errorf("fetch RSS feed: %w", err)
+	}
+	defer resp.Body.Close()
 
-		g.LogInfo("Fetching article list page %d (page_size=%d)", pageNo, pageSize)
-
-		items, err := g.fetchArticleList(ctx, pageNo, pageSize)
-		if err != nil {
-			g.LogWarn("Failed to fetch page %d: %v", pageNo, err)
-			break
-		}
-
-		if len(items) == 0 {
-			g.LogInfo("No more items on page %d", pageNo)
-			break
-		}
-
-		// Fetch detail content for each article using rod
-		for i, item := range items {
-			select {
-			case <-ctx.Done():
-				g.LogInfo("Context cancelled, stopping at %d articles", i)
-				break
-			default:
-			}
-
-			g.LogInfo("[%d/%d] Fetching detail for: %s", i+1, len(items), item.Title)
-
-			fullContent, err := g.fetchArticleDetail(ctx, item.URL)
-			if err != nil {
-				g.LogWarn("Failed to fetch detail for %s: %v, using title as content", item.Title, err)
-				fullContent = item.Title
-			}
-
-			// Process images in content - convert to base64
-			fullContent = g.processContentImages(fullContent)
-
-			item.Content = fullContent
-			if item.Summary == "" || item.Summary == item.Title {
-				item.Summary = extractSummary(fullContent)
-			}
-
-			articles = append(articles, item)
-
-			// Rate limit between requests to avoid triggering WAF
-			time.Sleep(500 * time.Millisecond)
-		}
-
-		totalFetched += len(items)
-
-		if len(items) < pageSize {
-			break
-		}
-
-		pageNo++
+	if !resp.IsSuccess() {
+		g.LogWarn("RSS feed request failed with status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("RSS feed request failed: %d", resp.StatusCode)
 	}
 
-	g.LogInfo("Successfully processed %d articles with full content", len(articles))
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		g.LogWarn("Failed to read RSS feed body: %v", err)
+		return nil, fmt.Errorf("read RSS feed body: %w", err)
+	}
+
+	var feed AtomFeed
+	if err := xml.Unmarshal(body, &feed); err != nil {
+		g.LogWarn("Failed to parse RSS feed XML: %v", err)
+		return nil, fmt.Errorf("parse RSS feed XML: %w", err)
+	}
+
+	g.LogInfo("Successfully parsed RSS feed with %d entries", len(feed.Entries))
+
+	// Step 2: Fetch detail for each article (if possible)
+	count := 0
+	for _, entry := range feed.Entries {
+		if count >= limit {
+			break
+		}
+
+		url := entry.GetLink()
+		if url == "" {
+			url = entry.ID
+		}
+		if url == "" {
+			continue
+		}
+
+		publishedAt := g.parseDate(entry.Published)
+		if publishedAt.IsZero() {
+			publishedAt = g.parseDate(entry.Updated)
+		}
+		if publishedAt.IsZero() {
+			publishedAt = time.Now()
+		}
+
+		// Try to fetch full content with Rod
+		fullContent := ""
+		contentFetched := false
+
+		if err := g.CheckContext(ctx); err == nil {
+			fullContent, contentFetched = g.fetchDetailWithRod(ctx, url)
+		}
+
+		// Use full content or fall back to summary
+		summary := g.cleanSummary(entry.Summary)
+		if summary == "" {
+			summary = entry.Title
+		}
+
+		if !contentFetched || fullContent == "" {
+			fullContent = summary
+		} else {
+			// Convert HTML to markdown and process images
+			fullContent = g.htmlToMarkdownWithImages(fullContent)
+		}
+
+		article := &Article{
+			Title:       g.cleanTitle(entry.Title),
+			Summary:     summary,
+			Content:     fullContent,
+			Source:      "先知社区",
+			URL:         url,
+			Author:      "",
+			Tags:        []string{"安全文章", "先知社区", "技术博客"},
+			PublishedAt: publishedAt,
+		}
+
+		articles = append(articles, article)
+		count++
+
+		g.LogDebug("Parsed article: %s (content: %d chars)", article.Title, len(fullContent))
+
+		// Rate limit between requests
+		time.Sleep(1 * time.Second)
+	}
+
+	g.LogInfo("Successfully processed %d articles from RSS feed", len(articles))
 	return articles, nil
 }
 
-// initSession visits the main page with rod to establish a session and get cookies.
-func (g *XianzhiGrabber) initSession(ctx context.Context) error {
+// fetchDetailWithRod tries to fetch article detail page using Rod browser.
+// Returns content and whether it was successfully fetched.
+func (g *XianzhiGrabber) fetchDetailWithRod(ctx context.Context, url string) (string, bool) {
 	page, cleanup, err := g.CreatePage(ctx)
 	if err != nil {
-		return fmt.Errorf("create page: %w", err)
+		g.LogDebug("Failed to create page for detail: %v", err)
+		return "", false
 	}
 	defer cleanup()
 
-	baseURL := "https://xz.aliyun.com"
-	g.LogInfo("Visiting page to establish session: %s", baseURL)
+	g.LogDebug("Navigating to article detail with Rod: %s", url)
 
-	// Navigate with bypass protection
-	if err := g.Navigate(page, baseURL); err != nil {
-		g.LogWarn("Navigation warning (may continue): %v", err)
-	}
-
-	// Wait for page to stabilize
-	time.Sleep(2 * time.Second)
-
-	g.LogDebug("Session initialized")
-	return nil
-}
-
-// fetchArticleList fetches the article list for a given page using rod.
-func (g *XianzhiGrabber) fetchArticleList(ctx context.Context, pageNo, pageSize int) ([]*Article, error) {
-	page, cleanup, err := g.CreatePage(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("create page: %w", err)
-	}
-	defer cleanup()
-
-	// Build URL with pagination
-	var url string
-	if pageNo == 1 {
-		url = "https://xz.aliyun.com"
-	} else {
-		url = fmt.Sprintf("https://xz.aliyun.com/page/%d", pageNo)
-	}
-
-	g.LogDebug("Navigating to list page: %s", url)
-
+	// Use longer timeout for WAF challenge
 	if err := g.NavigateWithContext(ctx, page, url); err != nil {
-		return nil, fmt.Errorf("navigate to list page: %w", err)
+		g.LogDebug("Failed to navigate: %v", err)
+		return "", false
 	}
 
-	// Wait for content to load
-	time.Sleep(2 * time.Second)
+	// Wait for WAF challenge
+	g.LogDebug("Waiting for WAF challenge...")
+	time.Sleep(8 * time.Second)
 
-	// Extract article list using JavaScript
+	// Check if blocked by WAF
 	script := `() => {
-		const results = [];
-		// Try multiple selectors for article items
-		const selectors = [
-			'.article-item',
-			'.post-list .post-item',
-			'.article-list .item',
-			'.blog-list .blog-item',
-			'article',
-			'.article-item a',
-			'.post-title a'
-		];
-
-		let items = [];
-		for (const selector of selectors) {
-			items = document.querySelectorAll(selector);
-			if (items.length > 0) {
-				break;
-			}
-		}
-
-		items.forEach(item => {
-			let title = '';
-			let link = '';
-			let author = '';
-			let date = '';
-			let summary = '';
-
-			// Try to find title and link
-			const titleLink = item.querySelector('a.title') || item.querySelector('h2 a') || item.querySelector('h3 a') || item.querySelector('a');
-			if (titleLink) {
-				title = titleLink.textContent.trim();
-				link = titleLink.getAttribute('href');
-			}
-
-			// Try to find author
-			const authorEl = item.querySelector('.author') || item.querySelector('.user-name') || item.querySelector('[class*="author"]');
-			if (authorEl) {
-				author = authorEl.textContent.trim();
-			}
-
-			// Try to find date
-			const dateEl = item.querySelector('.date') || item.querySelector('.time') || item.querySelector('[class*="date"]') || item.querySelector('[class*="time"]');
-			if (dateEl) {
-				date = dateEl.textContent.trim();
-			}
-
-			// Try to find summary
-			const summaryEl = item.querySelector('.summary') || item.querySelector('.desc') || item.querySelector('.excerpt');
-			if (summaryEl) {
-				summary = summaryEl.textContent.trim();
-			}
-
-			if (title && link) {
-				results.push({
-					title: title,
-					url: link.startsWith('http') ? link : 'https://xz.aliyun.com' + link,
-					author: author,
-					date: date,
-					summary: summary
-				});
-			}
-		});
-
-		return JSON.stringify(results);
+		const hasWaf = document.body.innerHTML.includes('aliyun_waf') || 
+		               document.body.innerHTML.includes('WAF') ||
+		               document.body.innerHTML.includes('Access Denied') ||
+		               document.body.innerHTML.includes('captcha');
+		return { blocked: hasWaf, htmlLength: document.body.innerHTML.length };
 	}`
 
 	result, err := page.Eval(script)
 	if err != nil {
-		return nil, fmt.Errorf("execute script: %w", err)
+		g.LogDebug("WAF check failed: %v", err)
+		return "", false
 	}
 
-	var items []struct {
-		Title   string `json:"title"`
-		URL     string `json:"url"`
-		Author  string `json:"author"`
-		Date    string `json:"date"`
-		Summary string `json:"summary"`
+	wafResult := result.Value.String()
+	if strings.Contains(wafResult, "blocked:true") {
+		g.LogDebug("Article blocked by WAF: %s", url)
+		return "", false
 	}
 
-	if err := json.Unmarshal([]byte(result.Value.String()), &items); err != nil {
-		return nil, fmt.Errorf("parse article list: %w", err)
-	}
-
-	articles := make([]*Article, 0, len(items))
-	for _, item := range items {
-		publishedAt := g.parseDate(item.Date)
-
-		articles = append(articles, &Article{
-			Title:       item.Title,
-			Summary:     item.Summary,
-			Source:      "先知社区",
-			URL:         item.URL,
-			Author:      item.Author,
-			Tags:        []string{"安全文章", "先知社区", "技术博客"},
-			PublishedAt: publishedAt,
-		})
-	}
-
-	return articles, nil
-}
-
-// fetchArticleDetail fetches the full article content using rod.
-func (g *XianzhiGrabber) fetchArticleDetail(ctx context.Context, articleURL string) (string, error) {
-	page, cleanup, err := g.CreatePage(ctx)
-	if err != nil {
-		return "", fmt.Errorf("create page: %w", err)
-	}
-	defer cleanup()
-
-	g.LogDebug("Navigating to article detail: %s", articleURL)
-
-	if err := g.NavigateWithContext(ctx, page, articleURL); err != nil {
-		return "", fmt.Errorf("navigate to detail page: %w", err)
-	}
-
-	// Wait for content to load
-	time.Sleep(2 * time.Second)
-
-	// Extract article content using JavaScript
-	script := `() => {
+	// Extract content - return just the HTML part
+	contentScript := `() => {
 		const selectors = [
 			'.article-content',
 			'.post-content',
 			'.article-body',
 			'.content-body',
-			'.entry-content',
-			'#article-content',
-			'article .content',
-			'.markdown-body',
-			'.article-detail .content'
+			'.news-content',
+			'.news-detail',
+			'article',
+			'.container'
 		];
-
-		let contentEl = null;
-		for (const selector of selectors) {
-			contentEl = document.querySelector(selector);
-			if (contentEl && contentEl.innerHTML.length > 200) {
-				break;
+		
+		for (const sel of selectors) {
+			const el = document.querySelector(sel);
+			if (el && el.innerText.length > 200) {
+				return el.innerHTML;
 			}
 		}
-
-		if (!contentEl) {
-			return JSON.stringify({ title: '', html: '', author: '', date: '' });
+		
+		// Fallback to any substantial content
+		const bodyText = document.body.innerText;
+		if (bodyText.length > 500) {
+			return document.body.innerHTML;
 		}
-
-		// Get title
-		const titleEl = document.querySelector('h1') || document.querySelector('.article-title') || document.querySelector('.post-title');
-		const title = titleEl ? titleEl.textContent.trim() : '';
-
-		// Get author
-		const authorEl = document.querySelector('.author') || document.querySelector('.user-name') || document.querySelector('[class*="author"]');
-		const author = authorEl ? authorEl.textContent.trim() : '';
-
-		// Get date
-		const dateEl = document.querySelector('.date') || document.querySelector('.time') || document.querySelector('[class*="date"]');
-		const date = dateEl ? dateEl.textContent.trim() : '';
-
-		const html = contentEl.innerHTML || '';
-		const text = contentEl.textContent || '';
-
-		return JSON.stringify({
-			title: title,
-			html: html,
-			text: text.trim(),
-			author: author,
-			date: date
-		});
+		
+		return '';
 	}`
 
-	result, err := page.Eval(script)
+	contentResult, err := page.Eval(contentScript)
 	if err != nil {
-		return "", fmt.Errorf("execute script: %w", err)
+		g.LogDebug("Content extraction failed: %v", err)
+		return "", false
 	}
 
-	var detailData struct {
-		Title  string `json:"title"`
-		HTML   string `json:"html"`
-		Text   string `json:"text"`
-		Author string `json:"author"`
-		Date   string `json:"date"`
+	htmlContent := contentResult.Value.String()
+	if htmlContent == "" {
+		g.LogDebug("No content extracted")
+		return "", false
 	}
 
-	if err := json.Unmarshal([]byte(result.Value.String()), &detailData); err != nil {
-		return "", fmt.Errorf("parse detail data: %w", err)
-	}
-
-	content := detailData.HTML
-	if content == "" || len(content) < 200 {
-		content = detailData.Text
-	}
-
-	if content == "" {
-		return "", fmt.Errorf("no content extracted from detail page")
-	}
-
-	// Convert HTML to Markdown
-	mdContent := g.htmlToMarkdown(content)
-
-	g.LogDebug("Extracted %d chars of content", len(mdContent))
-	return mdContent, nil
+	g.LogDebug("Successfully fetched content via Rod (%d chars)", len(htmlContent))
+	return htmlContent, true
 }
 
-// htmlToMarkdown converts HTML content to Markdown format.
-func (g *XianzhiGrabber) htmlToMarkdown(html string) string {
-	if html == "" {
+// htmlToMarkdownWithImages converts HTML to Markdown and embeds images as base64.
+func (g *XianzhiGrabber) htmlToMarkdownWithImages(htmlContent string) string {
+	if htmlContent == "" {
 		return ""
 	}
 
-	// Clean up unwanted attributes
-	html = cleanXianzhiHTML(html)
+	// Extract and replace images with base64
+	content := g.processImagesInHTML(htmlContent)
 
-	// Use html-to-markdown library
+	// Convert HTML to Markdown
 	converter := md.NewConverter("", true, nil)
-	mdContent, err := converter.ConvertString(html)
+	mdContent, err := converter.ConvertString(content)
 	if err != nil {
 		g.LogWarn("Failed to convert HTML to markdown: %v", err)
-		return g.stripHTML(html)
+		return g.stripHTML(content)
 	}
 
 	return mdContent
 }
 
-// cleanXianzhiHTML removes unwanted elements from xianzhi HTML content.
-func cleanXianzhiHTML(html string) string {
-	// Remove Vue data-v-* attributes
-	re := regexp.MustCompile(`\s+data-v-[a-zA-Z0-9]+=""`)
-	html = re.ReplaceAllString(html, "")
-
-	re2 := regexp.MustCompile(`\s+data-v-[a-zA-Z0-9]+="[^"]*"`)
-	html = re2.ReplaceAllString(html, "")
-
-	// Remove style attributes
-	re3 := regexp.MustCompile(`\s*style="[^"]*"`)
-	html = re3.ReplaceAllString(html, "")
-
-	// Remove empty paragraph tags
-	re4 := regexp.MustCompile(`<p>\s*</p>`)
-	html = re4.ReplaceAllString(html, "")
-
-	re5 := regexp.MustCompile(`<p>&nbsp;</p>`)
-	html = re5.ReplaceAllString(html, "")
-
-	return html
-}
-
-// stripHTML removes HTML tags from content.
-func (g *XianzhiGrabber) stripHTML(html string) string {
-	re := strings.NewReplacer(
-		"<br>", "\n",
-		"<br/>", "\n",
-		"<br />", "\n",
-		"</p>", "\n",
-		"</div>", "\n",
-		"</li>", "\n",
-	)
-
-	result := re.Replace(html)
-
-	inTag := false
-	var clean strings.Builder
-	for _, r := range result {
-		if r == '<' {
-			inTag = true
-			continue
-		}
-		if r == '>' {
-			inTag = false
-			continue
-		}
-		if !inTag {
-			clean.WriteRune(r)
-		}
+// processImagesInHTML finds images in HTML and converts them to base64.
+func (g *XianzhiGrabber) processImagesInHTML(html string) string {
+	if html == "" {
+		return html
 	}
 
-	lines := strings.Split(clean.String(), "\n")
-	var finalLines []string
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" {
-			finalLines = append(finalLines, trimmed)
-		}
-	}
-
-	return strings.Join(finalLines, "\n\n")
-}
-
-// processContentImages finds images in content and converts them to base64.
-func (g *XianzhiGrabber) processContentImages(content string) string {
-	if content == "" {
-		return content
-	}
-
-	// Find all image URLs in the content (Markdown and HTML formats)
-	// Markdown: ![alt](url)
-	// HTML: <img src="url" />
-
-	// Replace Markdown images
-	mdImgPattern := regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
-	content = mdImgPattern.ReplaceAllStringFunc(content, func(match string) string {
-		parts := mdImgPattern.FindStringSubmatch(match)
-		if len(parts) == 3 {
-			alt := parts[1]
-			url := parts[2]
-			base64 := g.downloadImageAsBase64(url)
-			if base64 != "" {
-				return fmt.Sprintf("![%s](%s)", alt, base64)
-			}
-			return match // Keep original if download fails
-		}
-		return match
-	})
-
-	// Replace HTML images
-	htmlImgPattern := regexp.MustCompile(`<img[^>]+src="([^"]+)"[^>]*>`)
-	content = htmlImgPattern.ReplaceAllStringFunc(content, func(match string) string {
-		srcParts := regexp.MustCompile(`src="([^"]+)"`).FindStringSubmatch(match)
+	// Find all image URLs
+	imgPattern := regexp.MustCompile(`<img[^>]+src=["']([^"']+)["'][^>]*>`)
+	
+	return imgPattern.ReplaceAllStringFunc(html, func(match string) string {
+		srcParts := regexp.MustCompile(`src=["']([^"']+)["']`).FindStringSubmatch(match)
 		if len(srcParts) == 2 {
 			url := srcParts[1]
 			base64 := g.downloadImageAsBase64(url)
 			if base64 != "" {
-				// Replace src with base64, keep other attributes
-				return regexp.MustCompile(`src="[^"]*"`).ReplaceAllString(match, fmt.Sprintf(`src="%s"`, base64))
+				return regexp.MustCompile(`src=["'][^"']+["']`).ReplaceAllString(match, fmt.Sprintf(`src="%s"`, base64))
 			}
 		}
 		return match
 	})
-
-	return content
 }
 
-// downloadImageAsBase64 downloads an image from URL and returns it as base64-encoded data URI.
-// Returns empty string on failure.
+// downloadImageAsBase64 downloads an image and returns it as base64 data URI.
 func (g *XianzhiGrabber) downloadImageAsBase64(imageURL string) string {
-	if imageURL == "" {
-		return ""
-	}
-
-	// Skip data URIs (already processed)
-	if strings.HasPrefix(imageURL, "data:") {
+	if imageURL == "" || strings.HasPrefix(imageURL, "data:") {
 		return imageURL
 	}
 
-	resp, err := g.client.R().
-		SetHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36").
-		SetHeader("Accept", "image/webp,image/apng,image/*,*/*;q=0.8").
-		SetHeader("Referer", "https://xz.aliyun.com/").
-		Get(imageURL)
-
+	resp, err := g.client.R().Get(imageURL)
 	if err != nil {
-		g.LogDebug("Failed to download image from %s: %v", imageURL, err)
+		g.LogDebug("Failed to download image: %v", err)
 		return ""
 	}
 	defer resp.Body.Close()
 
 	if !resp.IsSuccess() {
-		g.LogDebug("Image download failed with status %d: %s", resp.StatusCode, imageURL)
+		g.LogDebug("Image download failed with status: %d", resp.StatusCode)
 		return ""
 	}
 
-	// Determine content type
 	contentType := resp.GetHeader("Content-Type")
 	if contentType == "" {
 		contentType = "image/jpeg"
 	}
 
-	// Convert to base64 with data URI prefix
-	base64Data := base64.StdEncoding.EncodeToString(resp.Bytes())
-	dataURI := fmt.Sprintf("data:%s;base64,%s", contentType, base64Data)
+	data := resp.Bytes()
+	base64Data := base64.StdEncoding.EncodeToString(data)
+	return fmt.Sprintf("data:%s;base64,%s", contentType, base64Data)
+}
 
-	return dataURI
+// stripHTML removes HTML tags from content.
+func (g *XianzhiGrabber) stripHTML(html string) string {
+	re := regexp.MustCompile(`<[^>]*>`)
+	result := re.ReplaceAllString(html, "")
+	
+	result = strings.ReplaceAll(result, "&amp;", "&")
+	result = strings.ReplaceAll(result, "&lt;", "<")
+	result = strings.ReplaceAll(result, "&gt;", ">")
+	result = strings.ReplaceAll(result, "&quot;", "\"")
+	result = strings.ReplaceAll(result, "&#39;", "'")
+	result = strings.ReplaceAll(result, "&nbsp;", " ")
+	
+	return strings.TrimSpace(result)
+}
+
+// cleanTitle removes HTML tags from title.
+func (g *XianzhiGrabber) cleanTitle(title string) string {
+	re := regexp.MustCompile(`<[^>]*>`)
+	clean := re.ReplaceAllString(title, "")
+	
+	clean = strings.ReplaceAll(clean, "&amp;", "&")
+	clean = strings.ReplaceAll(clean, "&lt;", "<")
+	clean = strings.ReplaceAll(clean, "&gt;", ">")
+	clean = strings.ReplaceAll(clean, "&quot;", "\"")
+	clean = strings.ReplaceAll(clean, "&#39;", "'")
+	clean = strings.ReplaceAll(clean, "&nbsp;", " ")
+
+	return strings.TrimSpace(clean)
+}
+
+// cleanSummary removes HTML formatting from summary.
+func (g *XianzhiGrabber) cleanSummary(summary string) string {
+	if summary == "" {
+		return ""
+	}
+
+	re := regexp.MustCompile(`<br\s*/?>`)
+	summary = re.ReplaceAllString(summary, "\n")
+
+	re2 := regexp.MustCompile(`<p[^>]*>`)
+	summary = re2.ReplaceAllString(summary, "")
+
+	re3 := regexp.MustCompile(`</p>`)
+	summary = re3.ReplaceAllString(summary, "\n")
+
+	re4 := regexp.MustCompile(`<[^>]*>`)
+	summary = re4.ReplaceAllString(summary, "")
+
+	summary = strings.ReplaceAll(summary, "&amp;", "&")
+	summary = strings.ReplaceAll(summary, "&lt;", "<")
+	summary = strings.ReplaceAll(summary, "&gt;", ">")
+	summary = strings.ReplaceAll(summary, "&quot;", "\"")
+	summary = strings.ReplaceAll(summary, "&#39;", "'")
+	summary = strings.ReplaceAll(summary, "&nbsp;", " ")
+
+	lines := strings.Split(summary, "\n")
+	var cleanLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			cleanLines = append(cleanLines, trimmed)
+		}
+	}
+
+	return strings.Join(cleanLines, "\n\n")
 }
 
 // parseDate parses date string from various formats.
 func (g *XianzhiGrabber) parseDate(dateStr string) time.Time {
 	if dateStr == "" {
-		return time.Now()
+		return time.Time{}
 	}
 
 	layouts := []string{
-		"2006-01-02",
+		time.RFC3339,
+		"2006-01-02T15:04:05Z",
+		"2006-01-02T15:04:05+08:00",
 		"2006-01-02 15:04:05",
+		"2006-01-02",
 		"2006年01月02日",
 		"Jan 02, 2006",
 		"02 Jan 2006",
@@ -554,7 +412,7 @@ func (g *XianzhiGrabber) parseDate(dateStr string) time.Time {
 		}
 	}
 
-	return time.Now()
+	return time.Time{}
 }
 
 func init() {

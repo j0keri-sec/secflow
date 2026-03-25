@@ -18,6 +18,7 @@ import (
 	"github.com/secflow/server/internal/api"
 	"github.com/secflow/server/internal/api/handler"
 	"github.com/secflow/server/internal/queue"
+	"github.com/secflow/server/internal/report"
 	"github.com/secflow/server/internal/repository"
 	"github.com/secflow/server/internal/scheduler"
 	"github.com/secflow/server/internal/ws"
@@ -76,6 +77,9 @@ func main() {
 	pushRepo    := repository.NewPushChannelRepository(db)
 	auditRepo   := repository.NewAuditLogRepository(db)
 	reportRepo  := repository.NewReportRepository(db)
+	// Initialize report generator with Minimax AI (if configured)
+	reportGen := report.NewGenerator(vulnRepo, articleRepo)
+	// To enable AI: report.NewGeneratorWithAI(vulnRepo, articleRepo, "your-api-key", "your-group-id", report.AIModelGPT4)
 
 	// ── Task Scheduler (dispatches tasks to nodes) ──────────────────────────
 	taskScheduler := scheduler.NewWithConfig(q, taskRepo, nodeRepo, nil, cfg.Scheduler)
@@ -123,7 +127,7 @@ func main() {
 		handler.NewArticleHandler(articleRepo),
 		handler.NewPushChannelHandler(pushRepo),
 		handler.NewAuditLogHandler(auditRepo),
-		handler.NewReportHandler(reportRepo),
+		handler.NewReportHandler(reportGen, vulnRepo, reportRepo),
 		systemH,
 	)
 	// Inject scheduler into task handler for stop functionality

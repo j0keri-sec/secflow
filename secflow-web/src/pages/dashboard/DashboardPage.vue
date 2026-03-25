@@ -179,6 +179,7 @@ import {
 } from '@element-plus/icons-vue'
 import { dashboardApi } from '@/api/dashboard'
 import type { VulnRecord, Node } from '@/types'
+import logger from '@/utils/logger'
 
 const activeHotTab = ref('今日')
 const hotTabs = ['今日', '本周', '本月']
@@ -306,17 +307,17 @@ const formatRelativeTime = (time: string) => {
 const fetchVulnStats = async () => {
   try {
     loading.stats = true
-    console.log('[Dashboard] 正在获取漏洞统计...')
+    logger.log('[Dashboard] 正在获取漏洞统计...')
     const data = await dashboardApi.getVulnStats()
-    console.log('[Dashboard] 漏洞统计数据:', data)
+    logger.log('[Dashboard] 漏洞统计数据:', data)
     
     // 更新统计数据
     stats[0].value = formatNumber(data.total || 0)
     stats[2].value = formatNumber((data.by_severity?.['高危'] || 0) + (data.by_severity?.['严重'] || 0))
     stats[3].value = '--' // 情报源数量暂不支持
-    console.log('[Dashboard] 统计更新完成:', stats[0].value, stats[2].value)
+    logger.log('[Dashboard] 统计更新完成:', stats[0].value, stats[2].value)
   } catch (e) {
-    console.error('获取漏洞统计失败:', e)
+    logger.error('获取漏洞统计失败:', e)
   } finally {
     loading.stats = false
   }
@@ -326,9 +327,9 @@ const fetchVulnStats = async () => {
 const fetchNodes = async () => {
   try {
     loading.nodes = true
-    console.log('[Dashboard] 正在获取节点数据...')
+    logger.log('[Dashboard] 正在获取节点数据...')
     const data = await dashboardApi.getNodes()
-    console.log('[Dashboard] 节点数据:', data)
+    logger.log('[Dashboard] 节点数据:', data)
     const nodes: Node[] = data?.items || data || []
     servers.value = nodes
 
@@ -365,9 +366,9 @@ const fetchNodes = async () => {
         metrics[2].total = `/ ${(totalDisk / 1024 / 1024 / 1024).toFixed(0)} GB`
       }
     }
-    console.log('[Dashboard] 节点更新完成:', nodes.length, '个节点')
+    logger.log('[Dashboard] 节点更新完成:', nodes.length, '个节点')
   } catch (e) {
-    console.error('获取节点数据失败:', e)
+    logger.error('获取节点数据失败:', e)
   } finally {
     loading.nodes = false
   }
@@ -377,9 +378,9 @@ const fetchNodes = async () => {
 const fetchHotVulns = async () => {
   try {
     loading.vulns = true
-    console.log('[Dashboard] 正在获取热点漏洞...')
+    logger.log('[Dashboard] 正在获取热点漏洞...')
     const data = await dashboardApi.getRecentVulns(6)
-    console.log('[Dashboard] 热点漏洞数据:', data)
+    logger.log('[Dashboard] 热点漏洞数据:', data)
     hotVulns.value = data?.items || data || []
     
     // 计算今日新增
@@ -393,9 +394,9 @@ const fetchHotVulns = async () => {
       }
     }).length
     stats[1].value = String(todayCount)
-    console.log('[Dashboard] 今日新增:', todayCount)
+    logger.log('[Dashboard] 今日新增:', todayCount)
   } catch (e) {
-    console.error('获取热点漏洞失败:', e)
+    logger.error('获取热点漏洞失败:', e)
   } finally {
     loading.vulns = false
   }
@@ -405,9 +406,9 @@ const fetchHotVulns = async () => {
 const fetchLogs = async () => {
   try {
     loading.logs = true
-    console.log('[Dashboard] 正在获取审计日志...')
+    logger.log('[Dashboard] 正在获取审计日志...')
     const data = await dashboardApi.getAuditLogs(6)
-    console.log('[Dashboard] 审计日志数据:', data)
+    logger.log('[Dashboard] 审计日志数据:', data)
     const auditLogs = data?.items || []
     
     if (Array.isArray(auditLogs) && auditLogs.length > 0) {
@@ -425,7 +426,7 @@ const fetchLogs = async () => {
       ]
     }
   } catch (e) {
-    console.error('获取系统日志失败:', e)
+    logger.error('获取系统日志失败:', e)
     // 使用默认日志
     logs.value = [
       { time: formatTime(new Date().toISOString()), level: 'info', levelText: 'INFO', message: '系统运行正常' }

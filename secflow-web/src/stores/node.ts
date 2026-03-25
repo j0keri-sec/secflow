@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import logger from '@/utils/logger'
 import { ref } from 'vue'
 import type { Node } from '@/types'
 import { nodeApi } from '@/api/node'
@@ -13,7 +14,7 @@ export const useNodeStore = defineStore('node', () => {
       const result = await nodeApi.list()
       nodes.value = result || []
     } catch (error) {
-      console.error('Failed to fetch nodes:', error)
+      logger.error('Failed to fetch nodes:', error)
       nodes.value = []
     } finally {
       loading.value = false

@@ -44,6 +44,29 @@ export interface CreateReportParams {
   date_to?: string
 }
 
+// ── Report Generation ───────────────────────────────────────────────────────
+export interface DataSource {
+  id: string
+  name: string
+  description: string
+}
+
+export interface AIModel {
+  id: string
+  name: string
+  description: string
+}
+
+export interface ReportGenerateParams {
+  title: string
+  type: string
+  sources?: string[]
+  date_from?: string
+  date_to?: string
+  ai_model?: string
+  formats?: string[]
+}
+
 // ── Task Schedules ─────────────────────────────────────────────────────────
 export interface TaskSchedule {
   type: string
@@ -83,6 +106,28 @@ export const systemApi = {
   },
   createReport: (data: CreateReportParams) => http.post<Report>('/reports', data),
   deleteReport: (id: string) => http.del<null>(`/reports/${id}`),
+
+  // Report generation
+  getDataSources: () => http.get<{ sources: DataSource[] }>('/reports/datasources'),
+  getAIModels: () => http.get<{ models: AIModel[] }>('/reports/aimodels'),
+  generateReport: (params: ReportGenerateParams) => {
+    const q = new URLSearchParams()
+    if (params.type) q.set('type', params.type)
+    if (params.title) q.set('title', params.title)
+    params.sources?.forEach(s => q.append('sources', s))
+    if (params.date_from) q.set('date_from', params.date_from)
+    if (params.date_to) q.set('date_to', params.date_to)
+    if (params.ai_model) q.set('ai_model', params.ai_model)
+    return http.get<Blob>(`/reports/export?${q}`, { responseType: 'blob' })
+  },
+  previewReport: (params: { type?: string; sources?: string[]; date_from?: string; date_to?: string }) => {
+    const q = new URLSearchParams()
+    if (params.type) q.set('type', params.type)
+    params.sources?.forEach(s => q.append('sources', s))
+    if (params.date_from) q.set('date_from', params.date_from)
+    if (params.date_to) q.set('date_to', params.date_to)
+    return http.get<string>(`/reports/preview?${q}`)
+  },
 
   // ── Task Schedules ───────────────────────────────────────────────────────
   getTaskSchedules: () => http.get<TaskSchedule[]>('/task-schedules'),

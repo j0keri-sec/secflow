@@ -302,4 +302,5 @@ func Init() {
 	Register(NewQianxinWeeklyGrabber())
 	Register(NewVenustechGrabber())
 	Register(NewXianzhiGrabber())
+	Register(NewSihouGrabber())
 }

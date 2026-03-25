@@ -3,6 +3,7 @@ import { ref, reactive, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import logger from '@/utils/logger'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -21,22 +22,22 @@ async function submit() {
   error.value = ''
   loading.value = true
   try {
-    console.log('开始登录...', { username: form.username, password: '***' })
+    logger.log('开始登录...', { username: form.username, password: '***' })
 
     if (mode.value === 'login') {
       const result = await auth.login({ username: form.username, password: form.password })
-      console.log('登录成功，准备跳转到 dashboard...', result)
+      logger.log('登录成功，准备跳转到 dashboard...', result)
 
       // 使用 nextTick 确保 auth store 已完全更新
       await nextTick()
 
-      console.log('开始路由跳转...', {
+      logger.log('开始路由跳转...', {
         isLoggedIn: auth.isLoggedIn,
         user: auth.user,
       })
 
       await router.push('/dashboard')
-      console.log('路由跳转完成')
+      logger.log('路由跳转完成')
     } else {
       await authApi.register({
         username: form.username,
@@ -48,7 +49,7 @@ async function submit() {
       error.value = '注册成功，请登录'
     }
   } catch (e: any) {
-    console.error('登录失败:', e)
+    logger.error('登录失败:', e)
     error.value = e?.response?.data?.message ?? e?.message ?? '操作失败'
   } finally {
     loading.value = false
@@ -63,20 +64,15 @@ function switchMode(m: Mode) {
 
 <template>
   <div class="login-page">
-    <!-- Animated background orbs -->
+    <!-- Simplified background orb -->
     <div class="orb orb-1" />
-    <div class="orb orb-2" />
-    <div class="orb orb-3" />
 
     <!-- Grid overlay -->
     <div class="grid-overlay" />
 
-    <!-- Floating particles -->
+    <!-- Floating particles (reduced) -->
     <div class="particle p-1" />
     <div class="particle p-2" />
-    <div class="particle p-3" />
-    <div class="particle p-4" />
-    <div class="particle p-5" />
 
     <!-- Main card -->
     <div class="login-card-wrapper">
@@ -283,14 +279,14 @@ function switchMode(m: Mode) {
   position: relative;
 }
 
-/* ─── Animated orbs ──────────────────────────────────────────────────────── */
+/* ─── Simplified background orb ───────────────────────────────────────────── */
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
+  filter: blur(60px);
   pointer-events: none;
   opacity: 0;
-  animation: orb-fade-in 1.5s ease forwards;
+  animation: orb-fade-in 1s ease forwards;
 }
 
 @keyframes orb-fade-in {
@@ -298,37 +294,15 @@ function switchMode(m: Mode) {
 }
 
 .orb-1 {
-  width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, transparent 70%);
-  top: -150px; left: -100px;
-  animation: orb-float-1 12s ease-in-out infinite, orb-fade-in 1.5s ease forwards;
-}
-.orb-2 {
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
-  bottom: -200px; right: -150px;
-  animation: orb-float-2 15s ease-in-out infinite, orb-fade-in 1.5s ease 0.3s forwards;
-}
-.orb-3 {
-  width: 300px; height: 300px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  animation: orb-pulse 8s ease-in-out infinite, orb-fade-in 1.5s ease 0.6s forwards;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
+  top: -100px; left: -100px;
+  animation: orb-float 10s ease-in-out infinite, orb-fade-in 1s ease forwards;
 }
 
-@keyframes orb-float-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, 20px) scale(1.05); }
-  66% { transform: translate(-20px, 30px) scale(0.95); }
-}
-@keyframes orb-float-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-40px, -30px) scale(1.08); }
-}
-@keyframes orb-pulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
-  50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.15; }
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(20px, 20px); }
 }
 
 /* ─── Grid overlay ───────────────────────────────────────────────────────── */
@@ -342,22 +316,19 @@ function switchMode(m: Mode) {
   background-size: 40px 40px;
 }
 
-/* ─── Floating particles ─────────────────────────────────────────────────── */
+/* ─── Simplified floating particles ─────────────────────────────────────────── */
 .particle {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  background: rgba(14, 165, 233, 0.6);
+  background: rgba(14, 165, 233, 0.5);
 }
-.p-1 { width: 3px; height: 3px; top: 20%; left: 15%; animation: float-particle 6s 0s ease-in-out infinite; }
-.p-2 { width: 2px; height: 2px; top: 70%; left: 80%; animation: float-particle 8s 1s ease-in-out infinite; }
-.p-3 { width: 4px; height: 4px; top: 40%; right: 20%; background: rgba(139, 92, 246, 0.5); animation: float-particle 7s 2s ease-in-out infinite; }
-.p-4 { width: 2px; height: 2px; bottom: 30%; left: 30%; animation: float-particle 9s 0.5s ease-in-out infinite; }
-.p-5 { width: 3px; height: 3px; top: 15%; right: 35%; background: rgba(16, 185, 129, 0.5); animation: float-particle 5s 3s ease-in-out infinite; }
+.p-1 { width: 2px; height: 2px; top: 20%; left: 15%; animation: float-particle 6s ease-in-out infinite; }
+.p-2 { width: 2px; height: 2px; top: 70%; left: 80%; background: rgba(139, 92, 246, 0.4); animation: float-particle 8s ease-in-out infinite; }
 
 @keyframes float-particle {
-  0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
-  50% { transform: translateY(-20px) scale(1.5); opacity: 0.2; }
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-15px); opacity: 0.2; }
 }
 
 /* ─── Wrapper ────────────────────────────────────────────────────────────── */

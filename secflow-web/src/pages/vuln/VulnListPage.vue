@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logger from '@/utils/logger'
 import { ref, reactive, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { VulnRecord, SeverityLevel } from '@/types'
@@ -41,7 +42,7 @@ async function fetchCriticalVulns() {
     // 合并并限制为3个
     criticalVulns.value = [...criticalItems, ...highItems].slice(0, 3)
   } catch (error) {
-    console.error('Failed to load critical vulns:', error)
+    logger.error('Failed to load critical vulns:', error)
   }
 }
 
@@ -75,7 +76,7 @@ async function fetchData() {
     items.value = res?.items || []
     total.value = res?.total || 0
   } catch (error) {
-    console.error('Failed to load vulnerability data:', error)
+    logger.error('Failed to load vulnerability data:', error)
     items.value = []
     total.value = 0
   } finally {

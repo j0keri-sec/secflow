@@ -180,9 +180,14 @@ func Router(
 	// ── Reports ──────────────────────────────────────────────────────────────
 	reports := api.Group("/reports")
 	{
-		reports.GET("",      reportH.List)
-		reports.POST("",     reportH.Create)
-		reports.DELETE("/:id", middleware.RequireRole("editor"), reportH.Delete)
+		reports.GET("",              reportH.List)
+		reports.POST("",             reportH.Create)
+		reports.DELETE("/:id",      middleware.RequireRole("editor"), reportH.Delete)
+		reports.GET("/export",       reportH.ExportReport)    // Export report (download)
+		reports.GET("/preview",      reportH.PreviewReport)   // Preview report (HTML)
+		reports.GET("/stats",        reportH.GetReportStats) // Get report stats
+		reports.GET("/datasources", reportH.GetDataSources) // Get available data sources
+		reports.GET("/aimodels",     reportH.GetAIModels)    // Get available AI models
 	}
 
 	// ── Users (admin only) ───────────────────────────────────────────────────

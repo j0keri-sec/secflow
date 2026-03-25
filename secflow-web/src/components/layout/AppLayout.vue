@@ -140,6 +140,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, markRaw } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import logger from '@/utils/logger'
 
 // Element Plus Icons
 import {
@@ -196,6 +197,12 @@ const topMenuItems: MenuItem[] = [
     label: '安全简讯',
     path: '/news',
     icon: markRaw(Notification),
+  },
+  {
+    id: 'articles',
+    label: '文章列表',
+    path: '/articles',
+    icon: markRaw(Document),
   },
   {
     id: 'reports',
@@ -275,7 +282,7 @@ const toggleTheme = () => {
 }
 
 const handleLogout = () => {
-  console.log('User logged out')
+  logger.info('User logged out')
 }
 
 onMounted(() => {

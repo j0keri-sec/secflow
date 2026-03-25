@@ -1,72 +1,60 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { systemApi } from '@/api/system'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { systemApi, type DataSource, type AIModel, type Report } from '@/api/system'
+import { ElMessage } from 'element-plus'
 
-interface Report {
-  id: string
-  title: string
-  description: string
-  type: string
-  status: 'draft' | 'generating' | 'done' | 'failed'
-  file_url: string
-  created_by: string
-  created_at: string
-  finished_at?: string
-}
-
+// 列表数据
 const items = ref<Report[]>([])
 const total = ref(0)
-const loading = ref(true)
-const showCreateModal = ref(false)
-const creating = ref(false)
+const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
 
-const query = reactive({ page: 1, page_size: 20 })
-const newReport = reactive({
+// 模态框状态
+const showConfigModal = ref(false)
+const previewHtml = ref('')
+const showPreview = ref(false)
+const generating = ref(false)
+
+// 可选数据
+const dataSources = ref<DataSource[]>([])
+const aiModels = ref<AIModel[]>([])
+
+// 报告配置
+const config = reactive({
   title: '',
-  description: '',
   type: 'weekly',
-  date_from: '',
-  date_to: '',
+  sources: [] as string[],
+  dateFrom: '',
+  dateTo: '',
+  aiModel: '',
+  formats: ['html'] as string[],
 })
 
-async function fetchData() {
-  loading.value = true
-  try {
-    const res = await systemApi.listReports(query)
-    items.value = res.items
-    total.value = res.total
-  } finally {
-    loading.value = false
+// 预设时间选项
+const selectedTimeRange = ref('week')
+
+// 计算日期范围
+const computedDateRange = computed(() => {
+  const now = new Date()
+  const to = now.toISOString().split('T')[0]
+  let from: string
+
+  switch (selectedTimeRange.value) {
+    case 'week':
+      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      break
+    case 'month':
+      from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      break
+    default:
+      from = config.dateFrom || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   }
-}
 
-onMounted(fetchData)
+  return { from, to }
+})
 
-async function createReport() {
-  if (!newReport.title) return
-  creating.value = true
-  try {
-    await systemApi.createReport(newReport)
-    showCreateModal.value = false
-    await fetchData()
-  } finally {
-    creating.value = false
-  }
-}
-
-async function deleteReport(id: string) {
-  if (!confirm('确认删除该报告？')) return
-  await systemApi.deleteReport(id)
-  await fetchData()
-}
-
-function downloadReport(report: Report) {
-  if (!report.file_url) return
-  window.open(report.file_url, '_blank')
-}
-
-const totalPages = () => Math.ceil(total.value / query.page_size)
-
+// 状态映射
 const statusLabel: Record<string, string> = {
   draft: '草稿',
   generating: '生成中',
@@ -87,574 +75,507 @@ const typeLabel: Record<string, string> = {
   monthly: '月报',
   custom: '自定义',
 }
+
+// 加载数据
+async function fetchData() {
+  loading.value = true
+  try {
+    const res = await systemApi.listReports({ page: currentPage.value, page_size: pageSize.value })
+    items.value = res.items
+    total.value = res.total
+  } catch (e) {
+    console.error('Failed to fetch reports:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 加载可选配置
+async function loadConfigOptions() {
+  try {
+    const [dsRes, aiRes] = await Promise.all([
+      systemApi.getDataSources(),
+      systemApi.getAIModels(),
+    ])
+    dataSources.value = dsRes.sources
+    aiModels.value = aiRes.models
+  } catch (e) {
+    console.error('Failed to load config options:', e)
+  }
+}
+
+// 切换数据源
+function toggleSource(id: string) {
+  const idx = config.sources.indexOf(id)
+  if (idx >= 0) {
+    config.sources.splice(idx, 1)
+  } else {
+    config.sources.push(id)
+  }
+}
+
+// 打开生成模态框
+function openConfigModal() {
+  // 设置默认标题
+  const now = new Date()
+  const weekNum = getWeekNumber(now)
+  config.title = `第${weekNum}期安全周报`
+
+  // 默认选择最近一周
+  selectedTimeRange.value = 'week'
+  config.sources = ['nvd', 'cnvd']
+  config.aiModel = ''
+  config.formats = ['html']
+
+  showConfigModal.value = true
+}
+
+// 预览报告
+async function previewReport() {
+  if (!config.title) {
+    ElMessage.warning('请输入报告标题')
+    return
+  }
+
+  generating.value = true
+  showPreview.value = true
+  try {
+    const range = computedDateRange.value
+    const html = await systemApi.previewReport({
+      type: config.type,
+      sources: config.sources,
+      date_from: range.from,
+      date_to: range.to,
+    })
+    previewHtml.value = html
+  } catch (e) {
+    console.error('Preview failed:', e)
+    ElMessage.error('预览生成失败')
+    showPreview.value = false
+  } finally {
+    generating.value = false
+  }
+}
+
+// 下载报告
+async function downloadReport() {
+  if (!config.title) {
+    ElMessage.warning('请输入报告标题')
+    return
+  }
+
+  generating.value = true
+  try {
+    const range = computedDateRange.value
+    const blob = await systemApi.generateReport({
+      title: config.title,
+      type: config.type,
+      sources: config.sources,
+      date_from: range.from,
+      date_to: range.to,
+      ai_model: config.aiModel,
+      formats: config.formats,
+    })
+
+    // 创建下载链接
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const ext = config.formats.includes('md') ? 'md' : 'html'
+    a.download = `${config.title}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    ElMessage.success('报告下载成功')
+    showConfigModal.value = false
+  } catch (e) {
+    console.error('Download failed:', e)
+    ElMessage.error('报告下载失败')
+  } finally {
+    generating.value = false
+  }
+}
+
+// 删除报告
+async function deleteReport(id: string) {
+  if (!confirm('确认删除该报告？')) return
+  try {
+    await systemApi.deleteReport(id)
+    ElMessage.success('删除成功')
+    await fetchData()
+  } catch (e) {
+    ElMessage.error('删除失败')
+  }
+}
+
+// 获取周数
+function getWeekNumber(date: Date): number {
+  const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
+  const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000
+  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
+}
+
+// 分页变化
+function onPageChange(page: number) {
+  currentPage.value = page
+  fetchData()
+}
+
+function onSizeChange(size: number) {
+  pageSize.value = size
+  fetchData()
+}
+
+// 初始化
+onMounted(() => {
+  fetchData()
+  loadConfigOptions()
+})
 </script>
 
 <template>
-  <div class="ops-page">
-    <!-- 工具栏 -->
-    <div class="toolbar">
-      <span class="toolbar-info">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-        </svg>
-        共 {{ total }} 份报告
-      </span>
-      <span class="toolbar-hint">点击报告行可查看详情</span>
-      <button class="btn-primary" @click="showCreateModal = true">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        生成报告
-      </button>
-    </div>
-
-    <!-- 报告表格 -->
-    <div class="table-container">
-      <div v-if="loading" class="loading-state">
-        <div v-for="i in 5" :key="i" class="skeleton-row"></div>
-      </div>
-
-      <div v-else-if="items.length === 0" class="empty-state">
-        <div class="empty-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+  <div class="reports-page">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <h2>报告管理</h2>
+      <div class="header-actions">
+        <el-button type="primary" @click="openConfigModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
           </svg>
-        </div>
-        <p class="empty-text">暂无报告</p>
-        <p class="empty-hint">点击右上角按钮生成第一份报告</p>
-      </div>
-
-      <table v-else class="data-table">
-        <thead>
-          <tr>
-            <th>报告标题</th>
-            <th>类型</th>
-            <th>状态</th>
-            <th>创建人</th>
-            <th>创建时间</th>
-            <th>完成时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="report in items" :key="report.id">
-            <td>
-              <div class="report-title-cell">
-                <span class="report-name">{{ report.title }}</span>
-                <span v-if="report.description" class="report-desc">{{ report.description }}</span>
-              </div>
-            </td>
-            <td><span class="type-tag">{{ typeLabel[report.type] || report.type }}</span></td>
-            <td>
-              <span class="status-badge" :class="statusClass[report.status]">
-                {{ statusLabel[report.status] }}
-              </span>
-            </td>
-            <td><span class="text-secondary">{{ report.created_by }}</span></td>
-            <td><span class="text-secondary">{{ new Date(report.created_at).toLocaleString('zh-CN') }}</span></td>
-            <td><span class="text-secondary">{{ report.finished_at ? new Date(report.finished_at).toLocaleString('zh-CN') : '—' }}</span></td>
-            <td>
-              <div class="action-buttons">
-                <button v-if="report.status === 'done'" class="btn-download" @click="downloadReport(report)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  下载
-                </button>
-                <button class="btn-delete" @click="deleteReport(report.id)">删除</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 分页 -->
-      <div v-if="total > query.page_size" class="pagination">
-        <span class="page-info">共 {{ total }} 条</span>
-        <div class="page-controls">
-          <button class="page-btn" :disabled="query.page <= 1" @click="() => { query.page--; fetchData() }">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-          <span class="page-num">{{ query.page }} / {{ totalPages() }}</span>
-          <button class="page-btn" :disabled="query.page >= totalPages()" @click="() => { query.page++; fetchData() }">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
-        </div>
+          生成报告
+        </el-button>
       </div>
     </div>
 
-    <!-- 创建报告弹窗 -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div v-if="showCreateModal" class="modal-overlay" @click="showCreateModal = false">
-          <div class="modal-content" @click.stop>
-            <div class="modal-header">
-              <h2 class="modal-title">生成报告</h2>
-              <button class="modal-close" @click="showCreateModal = false">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label class="form-label">报告标题 <span class="required">*</span></label>
-                <input v-model="newReport.title" class="form-input" placeholder="2026年3月漏洞周报" />
+    <!-- 报告列表 -->
+    <div class="card">
+      <el-table :data="items" v-loading="loading" stripe>
+        <el-table-column prop="title" label="报告标题" min-width="200"/>
+        <el-table-column prop="type" label="类型" width="100">
+          <template #default="{ row }">
+            <span class="type-badge">{{ typeLabel[row.type] || row.type }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <span :class="['status-badge', statusClass[row.status]]">
+              {{ statusLabel[row.status] || row.status }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="180"/>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="downloadReport">下载</el-button>
+            <el-button link type="danger" size="small" @click="deleteReport(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          @current-change="onPageChange"
+          @size-change="onSizeChange"
+        />
+      </div>
+    </div>
+
+    <!-- 生成报告配置模态框 -->
+    <el-dialog v-model="showConfigModal" title="生成报告" width="700px" :close-on-click-modal="false">
+      <div class="config-form">
+        <!-- 基本信息 -->
+        <div class="form-section">
+          <h4>基本信息</h4>
+          <el-form label-width="100px">
+            <el-form-item label="报告标题">
+              <el-input v-model="config.title" placeholder="例如：第45期安全周报"/>
+            </el-form-item>
+            <el-form-item label="报告类型">
+              <el-select v-model="config.type" style="width: 100%">
+                <el-option value="daily" label="日报"/>
+                <el-option value="weekly" label="周报"/>
+                <el-option value="monthly" label="月报"/>
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 时间范围 -->
+        <div class="form-section">
+          <h4>时间范围</h4>
+          <el-form label-width="100px">
+            <el-form-item label="时间范围">
+              <el-radio-group v-model="selectedTimeRange">
+                <el-radio value="week">最近一周</el-radio>
+                <el-radio value="month">最近一月</el-radio>
+                <el-radio value="custom">自定义</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item v-if="selectedTimeRange === 'custom'" label="自定义日期">
+              <div style="display: flex; gap: 10px;">
+                <el-date-picker
+                  v-model="config.dateFrom"
+                  type="date"
+                  placeholder="开始日期"
+                  value-format="YYYY-MM-DD"
+                  style="width: 150px"
+                />
+                <span style="line-height: 32px;">至</span>
+                <el-date-picker
+                  v-model="config.dateTo"
+                  type="date"
+                  placeholder="结束日期"
+                  value-format="YYYY-MM-DD"
+                  style="width: 150px"
+                />
               </div>
-              <div class="form-group">
-                <label class="form-label">报告类型</label>
-                <select v-model="newReport.type" class="form-input">
-                  <option v-for="[v, l] in Object.entries(typeLabel)" :key="v" :value="v">{{ l }}</option>
-                </select>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">开始日期</label>
-                  <input v-model="newReport.date_from" type="date" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">结束日期</label>
-                  <input v-model="newReport.date_to" type="date" class="form-input" />
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">描述（可选）</label>
-                <textarea v-model="newReport.description" class="form-textarea" placeholder="报告描述..."></textarea>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn-secondary" @click="showCreateModal = false">取消</button>
-              <button class="btn-primary" :disabled="creating || !newReport.title" @click="createReport">
-                {{ creating ? '生成中...' : '生成' }}
-              </button>
+            </el-form-item>
+            <el-form-item label="实际范围" v-if="selectedTimeRange !== 'custom'">
+              <span class="date-range-display">
+                {{ computedDateRange.from }} 至 {{ computedDateRange.to }}
+              </span>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 数据来源 -->
+        <div class="form-section">
+          <h4>数据来源</h4>
+          <div class="source-grid">
+            <div
+              v-for="source in dataSources"
+              :key="source.id"
+              :class="['source-card', { selected: config.sources.includes(source.id) }]"
+              @click="toggleSource(source.id)"
+            >
+              <div class="source-name">{{ source.name }}</div>
+              <div class="source-desc">{{ source.description }}</div>
             </div>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+
+        <!-- AI 模型 -->
+        <div class="form-section">
+          <h4>AI 智能摘要</h4>
+          <div class="ai-models">
+            <div
+              v-for="model in aiModels"
+              :key="model.id"
+              :class="['model-card', { selected: config.aiModel === model.id }]"
+              @click="config.aiModel = model.id"
+            >
+              <div class="model-name">{{ model.name }}</div>
+              <div class="model-desc">{{ model.description }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 导出格式 -->
+        <div class="form-section">
+          <h4>导出格式</h4>
+          <el-checkbox-group v-model="config.formats">
+            <el-checkbox value="html">HTML (推荐)</el-checkbox>
+            <el-checkbox value="md">Markdown</el-checkbox>
+          </el-checkbox-group>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="showConfigModal = false">取消</el-button>
+        <el-button @click="previewReport" :loading="generating" :disabled="!config.title">
+          预览
+        </el-button>
+        <el-button type="primary" @click="downloadReport" :loading="generating" :disabled="!config.title">
+          下载报告
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 预览模态框 -->
+    <el-dialog v-model="showPreview" title="报告预览" width="900px" fullscreen>
+      <div class="preview-container" v-loading="generating">
+        <iframe v-if="previewHtml" :srcdoc="previewHtml" class="preview-frame"/>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <style scoped>
-.ops-page {
-  padding: 0 0 2rem;
-  animation: fadeIn 0.4s ease-out;
+.reports-page {
+  padding: 20px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* 工具栏 */
-.toolbar {
+.page-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  margin-bottom: 20px;
 }
 
-.toolbar-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.toolbar-hint {
-  flex: 1;
-  font-size: 0.8rem;
-  color: var(--text-tertiary);
-}
-
-.btn-primary {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1rem;
-  background: var(--gradient-primary);
-  border: none;
-  border-radius: var(--radius-sm);
-  color: white;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.btn-primary:hover { opacity: 0.9; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-secondary {
-  padding: 0.6rem 1rem;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.btn-secondary:hover { background: var(--color-bg-secondary); }
-
-/* 表格容器 */
-.table-container {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  font-size: 0.75rem;
+.page-header h2 {
+  margin: 0;
+  font-size: 20px;
   font-weight: 600;
-  color: var(--text-tertiary);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  color: #1a1a2e;
 }
 
-.data-table td {
-  padding: 0.75rem 1rem;
-  font-size: 0.8rem;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-light);
-}
-
-.data-table tr:hover td {
-  background: var(--bg-secondary);
-}
-
-.data-table tr:last-child td {
-  border-bottom: none;
-}
-
-.text-secondary {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-/* 报告标题单元格 */
-.report-title-cell {
+.header-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  gap: 10px;
 }
 
-.report-name {
-  font-weight: 500;
-  color: var(--text-primary);
+.header-actions .el-button svg {
+  margin-right: 6px;
 }
 
-.report-desc {
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  max-width: 300px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* 类型标签 */
-.type-tag {
-  font-size: 0.7rem;
-  padding: 0.2rem 0.5rem;
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--color-primary);
+.type-badge, .status-badge {
+  padding: 2px 8px;
   border-radius: 4px;
+  font-size: 12px;
 }
 
-/* 状态徽章 */
-.status-badge {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 600;
+.type-badge {
+  background: #e8f4ff;
+  color: #0066cc;
 }
 
-.status-draft { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
-.status-generating { background: rgba(234, 179, 8, 0.15); color: #eab308; }
-.status-done { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-.status-failed { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.status-draft { background: #f0f0f0; color: #666; }
+.status-generating { background: #fff7e6; color: #fa8c16; }
+.status-done { background: #f6ffed; color: #52c41a; }
+.status-failed { background: #fff2f0; color: #ff4d4f; }
 
-/* 操作按钮 */
-.action-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-download, .btn-delete {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-download {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: var(--color-primary);
-}
-.btn-download:hover {
-  background: rgba(59, 130, 246, 0.2);
-}
-
-.btn-delete {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-.btn-delete:hover {
-  background: rgba(239, 68, 68, 0.2);
-}
-
-/* 分页 */
 .pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  border-top: 1px solid var(--border-light);
-}
-
-.page-info {
-  font-size: 0.8rem;
-  color: var(--text-tertiary);
-}
-
-.page-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.page-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.page-btn:hover:not(:disabled) { background: var(--color-primary); border-color: var(--color-primary); color: white; }
-.page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.page-num {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  padding: 0 0.5rem;
-}
-
-/* 骨架屏 */
-.loading-state {
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.skeleton-row {
-  height: 48px;
-  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border) 50%, var(--bg-tertiary) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 4px;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-}
-
-.empty-icon {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
-  color: var(--text-tertiary);
-}
-
-.empty-text {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin: 0 0 0.5rem;
-}
-
-.empty-hint {
-  font-size: 0.85rem;
-  color: var(--text-tertiary);
-  margin: 0;
-}
-
-/* 弹窗 */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.modal-content {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.modal-close:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.modal-body {
-  padding: 1.25rem;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.modal-footer {
+  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--border);
 }
 
-/* 表单 */
-.form-group {
-  margin-bottom: 1rem;
+/* 配置表单样式 */
+.config-form {
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
-.form-label {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
+.form-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.required {
-  color: #ef4444;
+.form-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
-.form-input, .form-textarea {
-  padding: 0.6rem 0.75rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  width: 100%;
-  transition: border-color 0.2s ease;
+.form-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
 }
 
-.form-input:focus, .form-textarea:focus {
-  outline: none;
-  border-color: var(--primary);
+.date-range-display {
+  color: #666;
+  font-size: 14px;
 }
 
-.form-input[type="date"] {
-  color-scheme: light;
-}
-
-[data-theme="dark"] .form-input[type="date"] {
-  color-scheme: dark;
-}
-
-.form-textarea {
-  resize: none;
-  height: 80px;
-}
-
-.form-row {
+/* 数据源网格 */
+.source-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
-/* 过渡 */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
+.source-card {
+  padding: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* 响应式 */
-@media (max-width: 768px) {
-  .data-table { display: block; overflow-x: auto; }
-  .form-row { grid-template-columns: 1fr; }
+.source-card:hover {
+  border-color: #0066cc;
+}
+
+.source-card.selected {
+  border-color: #0066cc;
+  background: #f0f7ff;
+}
+
+.source-name {
+  font-weight: 500;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+.source-desc {
+  font-size: 12px;
+  color: #999;
+}
+
+/* AI 模型 */
+.ai-models {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.model-card {
+  padding: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-card:hover {
+  border-color: #722ed1;
+}
+
+.model-card.selected {
+  border-color: #722ed1;
+  background: #f9f0ff;
+}
+
+.model-name {
+  font-weight: 500;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+.model-desc {
+  font-size: 12px;
+  color: #999;
+}
+
+/* 预览容器 */
+.preview-container {
+  height: calc(100vh - 120px);
+}
+
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
 }
 </style>

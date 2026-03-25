@@ -25,6 +25,19 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/events/EventsPage.vue'),
         meta: { title: '安全简讯' },
       },
+      // ── Article ──────────────────────────────────────────────────
+      {
+        path: 'articles',
+        name: 'ArticleList',
+        component: () => import('@/pages/article/ArticleListPage.vue'),
+        meta: { title: '文章列表' },
+      },
+      {
+        path: 'articles/:id',
+        name: 'ArticleDetail',
+        component: () => import('@/pages/article/ArticleDetailPage.vue'),
+        meta: { title: '文章详情' },
+      },
       // ── Vulnerability ──────────────────────────────────────────────
       {
         path: 'vulns',
@@ -37,13 +50,6 @@ const routes: RouteRecordRaw[] = [
         name: 'VulnDetail',
         component: () => import('@/pages/vuln/VulnDetailPage.vue'),
         meta: { title: '漏洞详情' },
-      },
-      // ── Article ──────────────────────────────────────────────────
-      {
-        path: 'articles/:id',
-        name: 'ArticleDetail',
-        component: () => import('@/pages/article/ArticleDetailPage.vue'),
-        meta: { title: '文章详情' },
       },
       // ── System Management ──────────────────────────────────────────
       {
@@ -91,7 +97,7 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
-  { path: '/:pathMatch(.*)*', redirect: '/' },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/pages/NotFoundPage.vue') },
 ]
 
 const router = createRouter({
@@ -100,37 +106,24 @@ const router = createRouter({
 })
 
 // Navigation guard — redirect to /login when unauthenticated.
-router.beforeEach(async (to, from) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
-
-  console.log('路由守卫:', {
-    from: from.path,
-    to: to.path,
-    isPublic: to.meta.public,
-    isLoggedIn: auth.isLoggedIn,
-    hasUser: !!auth.user,
-  })
 
   // 公开路由允许直接访问
   if (to.meta.public) {
-    console.log('→ 公开路由，允许访问')
     return true
   }
 
   // 检查是否已登录
   if (!auth.isLoggedIn) {
-    console.log('→ 未登录，重定向到登录页')
     return { name: 'Login' }
   }
 
   // 如果已登录但没有用户信息，尝试获取
   if (!auth.user) {
-    console.log('→ 已登录但没有用户信息，尝试获取...')
     try {
       await auth.fetchMe()
-      console.log('→ 用户信息获取成功:', auth.user)
     } catch (e) {
-      console.error('→ 获取用户信息失败:', e)
       auth.logout()
       return { name: 'Login' }
     }
@@ -140,12 +133,10 @@ router.beforeEach(async (to, from) => {
   const requiredRoles = to.meta.roles as string[] | undefined
   if (requiredRoles && auth.user) {
     if (!requiredRoles.includes(auth.user.role)) {
-      console.log('→ 权限不足，重定向到 Dashboard')
       return { name: 'Dashboard' }
     }
   }
 
-  console.log('→ 允许访问')
   return true
 })
 

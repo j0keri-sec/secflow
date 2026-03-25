@@ -33,6 +33,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o client-test ./cmd/client/
 # ================================================
 FROM debian:bookworm-slim
 
+# Use Chinese Debian mirror for faster download
+RUN echo 'deb http://mirrors.ustc.edu.cn/debian/ bookworm main contrib' > /etc/apt/sources.list && \
+    echo 'deb http://mirrors.ustc.edu.cn/debian-security/ bookworm-security main contrib' >> /etc/apt/sources.list && \
+    echo 'deb http://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib' >> /etc/apt/sources.list
+
 # Install test dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash curl wget ca-certificates chromium chromium-driver && rm -rf /var/lib/apt/lists/*

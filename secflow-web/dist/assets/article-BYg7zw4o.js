@@ -1,1 +1,0 @@
-import{P as r}from"./index-BnCpYn57.js";const c={list:(t={})=>{const a=new URLSearchParams;return Object.entries(t).forEach(([i,e])=>{e!==void 0&&e!==""&&a.set(i,String(e))}),r.get(`/articles?${a}`)},get:t=>r.get(`/articles/${t}`),delete:t=>r.del(`/articles/${t}`)};export{c as a};

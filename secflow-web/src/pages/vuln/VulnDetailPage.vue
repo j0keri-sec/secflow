@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logger from '@/utils/logger'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { VulnRecord } from '@/types'
@@ -36,7 +37,7 @@ async function copyToClipboard(text: string, type: string) {
     copied.value = type
     setTimeout(() => { copied.value = '' }, 2000)
   } catch (e) {
-    console.error('Copy failed:', e)
+    logger.error('Copy failed:', e)
   }
 }
 

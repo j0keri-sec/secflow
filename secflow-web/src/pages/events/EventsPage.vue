@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logger from '@/utils/logger'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { articleApi } from '@/api/article'
@@ -77,7 +78,7 @@ async function fetchArticles() {
       total.value = res.total || 0
     }
   } catch (error) {
-    console.error('Failed to fetch articles:', error)
+    logger.error('Failed to fetch articles:', error)
   } finally {
     loading.value = false
   }

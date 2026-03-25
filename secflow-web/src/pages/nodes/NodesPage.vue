@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logger from '@/utils/logger'
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { Node } from '@/types'
 import { nodeApi } from '@/api/node'
@@ -17,7 +18,7 @@ async function fetchNodes() {
     const res = await nodeApi.listNodes({ page: 1, page_size: 100 })
     nodes.value = res?.items || []
   } catch (error) {
-    console.error('Failed to load nodes:', error)
+    logger.error('Failed to load nodes:', error)
     nodes.value = []
   }
 }
@@ -61,7 +62,7 @@ async function handleDeleteNode(node: Node) {
     await fetchNodes()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('Failed to delete node:', error)
+      logger.error('Failed to delete node:', error)
       ElMessage.error('删除失败')
     }
   } finally {
@@ -82,7 +83,7 @@ async function handlePauseNode(node: Node) {
     await fetchNodes()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('Failed to pause node:', error)
+      logger.error('Failed to pause node:', error)
       ElMessage.error('暂停失败')
     }
   } finally {
@@ -103,7 +104,7 @@ async function handleResumeNode(node: Node) {
     await fetchNodes()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('Failed to resume node:', error)
+      logger.error('Failed to resume node:', error)
       ElMessage.error('恢复失败')
     }
   } finally {
@@ -119,7 +120,7 @@ async function handleViewLogs(node: Node) {
     const res = await nodeApi.getNodeLogs(node.id)
     nodeLogs.value = res.logs || []
   } catch (error) {
-    console.error('Failed to get node logs:', error)
+    logger.error('Failed to get node logs:', error)
     nodeLogs.value = ['获取日志失败']
   } finally {
     logsLoading.value = false

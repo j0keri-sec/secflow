@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logger from '@/utils/logger'
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import type { Task, TaskStatus, TaskType } from '@/types'
 import { nodeApi } from '@/api/node'
@@ -106,7 +107,7 @@ async function fetchData() {
     items.value = res?.items || []
     total.value = res?.total || 0
   } catch (error) {
-    console.error('Failed to load tasks:', error)
+    logger.error('Failed to load tasks:', error)
     items.value = []
     total.value = 0
   } finally {
@@ -137,7 +138,7 @@ async function createTask() {
     await fetchData()
     ElMessage.success('任务创建成功')
   } catch (error) {
-    console.error('Failed to create task:', error)
+    logger.error('Failed to create task:', error)
     ElMessage.error('任务创建失败')
   } finally {
     creating.value = false
@@ -156,7 +157,7 @@ async function handleDeleteTask(task: Task) {
     await fetchData()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('Failed to delete task:', error)
+      logger.error('Failed to delete task:', error)
       ElMessage.error('删除失败')
     }
   }
@@ -174,7 +175,7 @@ async function handleStopTask(task: Task) {
     await fetchData()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('Failed to stop task:', error)
+      logger.error('Failed to stop task:', error)
       ElMessage.error('停止失败')
     }
   }
@@ -193,7 +194,7 @@ async function handleViewDetails(task: Task) {
       task.error ? `[ERROR] ${task.error}` : '',
     ].filter(Boolean)
   } catch (error) {
-    console.error('Failed to get task details:', error)
+    logger.error('Failed to get task details:', error)
     taskLogs.value = ['获取任务详情失败']
   } finally {
     logsLoading.value = false

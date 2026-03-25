@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import logger from '@/utils/logger'
+import { ref, reactive, onMounted } from 'vue'
 import type { Article } from '@/types'
 import { articleApi } from '@/api/article'
 
@@ -7,6 +8,10 @@ const items = ref<Article[]>([])
 const total = ref(0)
 const loading = ref(false)
 const selectedArticle = ref<Article | null>(null)
+
+// 可用的来源列表
+const sources = ['先知社区', '嘶吼', 'FreeBuf', '安全客', '奇安信', '启明星辰']
+const selectedSource = ref('')
 
 const query = reactive({
   page: 1,
@@ -25,7 +30,7 @@ async function fetchData() {
     items.value = res?.items || []
     total.value = res?.total || 0
   } catch (error) {
-    console.error('Failed to load article data:', error)
+    logger.error('Failed to load article data:', error)
     items.value = []
     total.value = 0
   } finally {
@@ -33,14 +38,38 @@ async function fetchData() {
   }
 }
 
-watch(() => query.source, () => { query.page = 1; fetchData() })
-onMounted(fetchData)
+function selectSource(source: string) {
+  if (selectedSource.value === source) {
+    selectedSource.value = ''
+    query.source = ''
+  } else {
+    selectedSource.value = source
+    query.source = source
+  }
+  query.page = 1
+  fetchData()
+}
 
-const totalPages = () => Math.ceil(total.value / query.page_size)
+function search() {
+  query.page = 1
+  fetchData()
+}
+
+function clearFilters() {
+  query.keyword = ''
+  query.source = ''
+  selectedSource.value = ''
+  query.page = 1
+  fetchData()
+}
 
 function openDetail(a: Article) {
   selectedArticle.value = a
 }
+
+onMounted(fetchData)
+
+const totalPages = () => Math.ceil(total.value / query.page_size)
 </script>
 
 <template>
@@ -50,21 +79,47 @@ function openDetail(a: Article) {
         <h1 class="text-xl font-semibold text-white">文章热点</h1>
         <p class="text-sm text-slate-400 mt-0.5">共 {{ total }} 篇技术文章</p>
       </div>
+      <button class="btn-secondary flex items-center gap-2" @click="fetchData">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.582 0a2.003 2.003 0 004.418 0L20 10M4 4l5 5m5-5l-5 5m5-5H9.582"/>
+        </svg>
+        刷新
+      </button>
     </div>
 
-    <!-- Filters -->
-    <div class="card !p-4 flex flex-wrap gap-3 items-end">
-      <div class="flex-1 min-w-[200px]">
-        <label class="block text-xs text-slate-400 mb-1">关键词</label>
-        <input v-model="query.keyword" class="input" placeholder="搜索标题…"
-          @keyup.enter="() => { query.page = 1; fetchData() }" />
+    <!-- Source Filter Chips -->
+    <div class="card !p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs text-slate-400">来源筛选:</span>
+        <button
+          v-for="source in sources"
+          :key="source"
+          :class="['filter-chip', { active: selectedSource === source }]"
+          @click="selectSource(source)"
+        >
+          {{ source }}
+        </button>
+        <button
+          v-if="selectedSource"
+          class="text-xs text-slate-500 hover:text-slate-300 ml-auto"
+          @click="clearFilters"
+        >
+          清除筛选
+        </button>
       </div>
-      <div class="w-32">
-        <label class="block text-xs text-slate-400 mb-1">来源</label>
-        <input v-model="query.source" class="input" placeholder="来源…"
-          @change="() => { query.page = 1; fetchData() }" />
+      
+      <!-- Search -->
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <input 
+            v-model="query.keyword" 
+            class="input" 
+            placeholder="搜索文章标题..." 
+            @keyup.enter="search"
+          />
+        </div>
+        <button class="btn-primary" @click="search">搜索</button>
       </div>
-      <button class="btn-primary" @click="() => { query.page = 1; fetchData() }">查询</button>
     </div>
 
     <!-- Article Grid -->
@@ -177,4 +232,28 @@ function openDetail(a: Article) {
 .slide-leave-to .relative { transform: translateX(100%); }
 .slide-enter-active .relative,
 .slide-leave-active .relative { transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); }
+
+/* Filter Chips */
+.filter-chip {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
 </style>

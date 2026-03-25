@@ -169,6 +169,7 @@ secflow/
 | [🔧 Handler 开发](backend/handler-guide.md) | API Handler 开发教程 |
 | [💾 Repository 开发](backend/repository-guide.md) | 数据访问层开发教程 |
 | [📝 开发工作流程](backend/workflow-guide.md) | Git 工作流、代码规范、测试 |
+| [🧪 测试指南](testing.md) | 单元测试、集成测试、覆盖率 |
 | [🎨 前端开发](frontend/README.md) | Vue3 前端开发指南 |
 | [📐 前端开发规范](frontend/development-guide.md) | TypeScript 规范、组件规范 |
 | [🕷️ 客户端开发](client/README.md) | 爬虫节点开发指南 |
@@ -190,6 +191,32 @@ secflow/
 | 文档 | 说明 |
 |------|------|
 | [📘 使用手册](user-guide/README.md) | 功能使用指南、操作说明 |
+
+## 测试覆盖
+
+### 单元测试
+
+```bash
+# 运行所有测试
+cd secflow-server && go test ./... -cover
+
+# 运行指定包测试
+go test ./pkg/auth/... -v
+go test ./internal/api/middleware/... -v
+```
+
+| 包 | 覆盖率 |
+|---|---|
+| `pkg/auth` | **72.7%** ✅ |
+| `internal/api/middleware` | **78.7%** ✅ |
+| `internal/api/handler` | 1.3% |
+| `tests/integration` | 3.5% |
+
+### 测试类型
+
+- **单元测试**: `pkg/auth`, `internal/api/middleware`, `internal/api/handler`
+- **集成测试**: `tests/integration` (MongoDB/Redis 连接测试)
+- **API 测试**: `tests/` (Handler 级别测试)
 
 ## 支持的情报源
 

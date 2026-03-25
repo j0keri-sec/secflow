@@ -2,13 +2,38 @@
 <html lang="zh-CN" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SecFlow — 安全信息流平台</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-BnCpYn57.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-ClnEf8SQ.css">
+    
+    <!-- SEO Meta Tags -->
+    <title>SecFlow — 安全情报实时监控平台</title>
+    <meta name="description" content="SecFlow 漏洞情报与事件管理平台，提供实时安全监控、漏洞情报收集、自动化任务调度等功能" />
+    <meta name="keywords" content="安全,漏洞情报,SecFlow,威胁情报,安全监控,漏洞管理" />
+    <meta name="author" content="SecFlow Team" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    
+    <!-- Theme Color for mobile browsers -->
+    <meta name="theme-color" content="#0f172a" />
+    
+    <!-- Preconnect to API domain for faster connection -->
+    <link rel="preconnect" href="http://localhost:8080" />
+    
+    <!-- Font: use system fonts as fallback, Google Fonts optional -->
+    <style>
+      /* System font stack for better performance */
+      :root {
+        --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      
+      /* Prevent flash of unstyled content */
+      html { background: #0f172a; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-D0xqD_f4.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vue-vendor-Dbl4FdAG.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-C4_2DvBO.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CRB8QtdH.css">
   </head>
   <body class="bg-surface text-slate-100 antialiased">
     <div id="app"></div>

@@ -19,10 +19,10 @@ func NewService() *Service {
 	}
 }
 
-// PushVulnToChannels pushes a vulnerability notification to multiple channels.
-func (s *Service) PushVulnToChannels(ctx context.Context, vuln *model.VulnRecord, channels []*model.PushChannel) error {
+// collectPushers creates TextPusher instances from enabled channels.
+func (s *Service) collectPushers(channels []*model.PushChannel) ([]TextPusher, error) {
 	if len(channels) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	var pushers []TextPusher
@@ -33,11 +33,20 @@ func (s *Service) PushVulnToChannels(ctx context.Context, vuln *model.VulnRecord
 
 		pusher, err := s.factory.CreateFromChannel(channel)
 		if err != nil {
-			return fmt.Errorf("create pusher for channel %s: %w", channel.Name, err)
+			return nil, fmt.Errorf("create pusher for channel %s: %w", channel.Name, err)
 		}
 		pushers = append(pushers, pusher)
 	}
 
+	return pushers, nil
+}
+
+// PushVulnToChannels pushes a vulnerability notification to multiple channels.
+func (s *Service) PushVulnToChannels(ctx context.Context, vuln *model.VulnRecord, channels []*model.PushChannel) error {
+	pushers, err := s.collectPushers(channels)
+	if err != nil {
+		return err
+	}
 	if len(pushers) == 0 {
 		return nil
 	}
@@ -53,23 +62,10 @@ func (s *Service) PushVulnToChannels(ctx context.Context, vuln *model.VulnRecord
 
 // PushArticleToChannels pushes an article notification to multiple channels.
 func (s *Service) PushArticleToChannels(ctx context.Context, article *model.Article, channels []*model.PushChannel) error {
-	if len(channels) == 0 {
-		return nil
+	pushers, err := s.collectPushers(channels)
+	if err != nil {
+		return err
 	}
-
-	var pushers []TextPusher
-	for _, channel := range channels {
-		if !channel.Enabled {
-			continue
-		}
-
-		pusher, err := s.factory.CreateFromChannel(channel)
-		if err != nil {
-			return fmt.Errorf("create pusher for channel %s: %w", channel.Name, err)
-		}
-		pushers = append(pushers, pusher)
-	}
-
 	if len(pushers) == 0 {
 		return nil
 	}
@@ -84,23 +80,10 @@ func (s *Service) PushArticleToChannels(ctx context.Context, article *model.Arti
 
 // PushAlertToChannels pushes an alert notification to multiple channels.
 func (s *Service) PushAlertToChannels(ctx context.Context, title, content string, channels []*model.PushChannel) error {
-	if len(channels) == 0 {
-		return nil
+	pushers, err := s.collectPushers(channels)
+	if err != nil {
+		return err
 	}
-
-	var pushers []TextPusher
-	for _, channel := range channels {
-		if !channel.Enabled {
-			continue
-		}
-
-		pusher, err := s.factory.CreateFromChannel(channel)
-		if err != nil {
-			return fmt.Errorf("create pusher for channel %s: %w", channel.Name, err)
-		}
-		pushers = append(pushers, pusher)
-	}
-
 	if len(pushers) == 0 {
 		return nil
 	}
@@ -115,23 +98,10 @@ func (s *Service) PushAlertToChannels(ctx context.Context, title, content string
 
 // PushTestMessage sends a test message to all channels.
 func (s *Service) PushTestMessage(ctx context.Context, channels []*model.PushChannel) error {
-	if len(channels) == 0 {
-		return nil
+	pushers, err := s.collectPushers(channels)
+	if err != nil {
+		return err
 	}
-
-	var pushers []TextPusher
-	for _, channel := range channels {
-		if !channel.Enabled {
-			continue
-		}
-
-		pusher, err := s.factory.CreateFromChannel(channel)
-		if err != nil {
-			return fmt.Errorf("create pusher for channel %s: %w", channel.Name, err)
-		}
-		pushers = append(pushers, pusher)
-	}
-
 	if len(pushers) == 0 {
 		return nil
 	}

@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CORS Configuration** - CORS origins now configurable via `cors_origins` config or `CORS_ORIGINS` env var (comma-separated). Empty means allow all (dev mode). In production, always set specific origins.
 
 ### Added
+- **Unit Test Suite** - Comprehensive unit tests for key components
+  - `pkg/auth/auth_test.go` - JWT generation/validation, bcrypt password hashing
+  - `internal/api/middleware/middleware_test.go` - JWT auth, CORS, role-based access, recovery, timeout
+  - `internal/api/handler/password_reset_test.go` - Password reset flow tests
+  - `internal/model/model_test.go` - Data model structure tests
+  - Test coverage: auth 72.7%, middleware 78.7%
+
 - **Password Reset System** - Users can now reset forgotten passwords via email token-based flow
   - `POST /api/v1/auth/reset/request` - Request password reset by email
   - `POST /api/v1/auth/reset/confirm` - Confirm reset with token and new password
