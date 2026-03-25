@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security Fixes
+- **NoSQL Injection Fix in GetByEmail** - Email regex now properly escapes special characters to prevent injection attacks
+- **CORS Configuration** - CORS origins now configurable via `cors_origins` config or `CORS_ORIGINS` env var (comma-separated). Empty means allow all (dev mode). In production, always set specific origins.
+
 ### Added
 - **Password Reset System** - Users can now reset forgotten passwords via email token-based flow
   - `POST /api/v1/auth/reset/request` - Request password reset by email
