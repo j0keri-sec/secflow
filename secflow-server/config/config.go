@@ -32,9 +32,10 @@ type NodeConfig struct {
 
 // ServerConfig holds HTTP server parameters.
 type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
-	Mode string `yaml:"mode"` // debug | release
+	Host        string   `yaml:"host"`
+	Port        int      `yaml:"port"`
+	Mode        string   `yaml:"mode"` // debug | release
+	CORSOrigins []string `yaml:"cors_origins"` // Allowed CORS origins; empty means all
 }
 
 func (s *ServerConfig) Addr() string {
@@ -126,6 +127,9 @@ func (c *Config) applyEnv() {
 	}
 	if v := os.Getenv("NODE_TOKEN_KEY"); v != "" {
 		c.Node.TokenKey = v
+	}
+	if v := os.Getenv("CORS_ORIGINS"); v != "" {
+		c.Server.CORSOrigins = strings.Split(v, ",")
 	}
 }
 

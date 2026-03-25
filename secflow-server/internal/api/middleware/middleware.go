@@ -88,13 +88,37 @@ func Recovery() gin.HandlerFunc {
 	})
 }
 
-// CORS returns a permissive CORS middleware for development.
-// Tighten AllowOrigins in production.
-func CORS() gin.HandlerFunc {
+// CORS returns a CORS middleware based on configured allowed origins.
+// If allowedOrigins is empty, it allows all origins (not recommended for production).
+// If allowedOrigins contains values, only those origins are allowed.
+func CORS(allowedOrigins []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		origin := c.GetHeader("Origin")
+
+		// Determine allowed origin
+		allowedOrigin := ""
+		if len(allowedOrigins) == 0 {
+			// No origins configured - allow all (development mode)
+			allowedOrigin = "*"
+		} else {
+			// Check if request origin is in whitelist
+			for _, o := range allowedOrigins {
+				if o == origin {
+					allowedOrigin = origin
+					break
+				}
+			}
+			// If no match found, don't set Access-Control-Allow-Origin
+			// This will cause browsers to block the response for cross-origin requests
+		}
+
+		if allowedOrigin != "" {
+			c.Header("Access-Control-Allow-Origin", allowedOrigin)
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusNoContent)
 			return

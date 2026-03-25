@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/secflow/server/config"
 	"github.com/secflow/server/internal/api/handler"
 	"github.com/secflow/server/internal/api/middleware"
 	"github.com/secflow/server/pkg/auth"
@@ -48,21 +49,22 @@ func (g *gzipWriter) ReadFrom(r io.Reader) (int64, error) {
 
 // Router returns a configured Gin engine with all routes registered.
 func Router(
-	authSvc     *auth.Service,
-	authH       *handler.AuthHandler,
-	vulnH       *handler.VulnHandler,
-	nodeH       *handler.NodeHandler,
-	taskH       *handler.TaskHandler,
-	userH       *handler.UserHandler,
-	articleH    *handler.ArticleHandler,
-	pushH       *handler.PushChannelHandler,
-	auditH      *handler.AuditLogHandler,
-	reportH     *handler.ReportHandler,
-	systemH     *handler.SystemHandler,
+	cfg        *config.Config,
+	authSvc    *auth.Service,
+	authH      *handler.AuthHandler,
+	vulnH      *handler.VulnHandler,
+	nodeH      *handler.NodeHandler,
+	taskH      *handler.TaskHandler,
+	userH      *handler.UserHandler,
+	articleH   *handler.ArticleHandler,
+	pushH      *handler.PushChannelHandler,
+	auditH     *handler.AuditLogHandler,
+	reportH    *handler.ReportHandler,
+	systemH    *handler.SystemHandler,
 ) *gin.Engine {
 	r := gin.New()
 	r.Use(middleware.Recovery())
-	r.Use(middleware.CORS())
+	r.Use(middleware.CORS(cfg.Server.CORSOrigins))
 	r.Use(middleware.RequestID())
 	r.Use(gzipMiddleware())
 

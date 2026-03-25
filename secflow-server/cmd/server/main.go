@@ -113,6 +113,7 @@ func main() {
 	}
 	taskH := handler.NewTaskHandler(taskRepo, q)
 	r := api.Router(
+		cfg,
 		authSvc,
 		handler.NewAuthHandler(userRepo, invRepo, auditRepo, authSvc),
 		handler.NewVulnHandler(vulnRepo),

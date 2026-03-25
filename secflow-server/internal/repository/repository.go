@@ -288,12 +288,28 @@ func (r *UserRepo) GetByUsername(ctx context.Context, username string) (*model.U
 // GetByEmail returns a user by email address (case-insensitive).
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	var u model.User
-	// Email lookup is case-insensitive using regex
-	err := r.db.coll(model.CollUsers).FindOne(ctx, bson.M{"email": bson.M{"$regex": "^" + email + "$", "$options": "i"}}).Decode(&u)
+	// Use a simple regex with escaped email to prevent injection
+	// The ^ and $ anchors ensure exact match, and special chars are escaped
+	escaped := escapeRegex(email)
+	err := r.db.coll(model.CollUsers).FindOne(ctx, bson.M{"email": bson.M{"$regex": "^" + escaped + "$", "$options": "i"}}).Decode(&u)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, nil
 	}
 	return &u, err
+}
+
+// escapeRegex escapes special regex characters in a string to prevent injection.
+func escapeRegex(s string) string {
+	var result []byte
+	for _, ch := range s {
+		switch ch {
+		case '\\', '.', '+', '*', '?', '(', ')', '[', ']', '{', '}', '^', '$', '|':
+			result = append(result, '\\', byte(ch))
+		default:
+			result = append(result, string(ch)...)
+		}
+	}
+	return string(result)
 }
 
 // GetByID returns a user by ObjectID.
