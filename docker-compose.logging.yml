@@ -1,0 +1,68 @@
+# SecFlow Logging Stack
+# Loki + Promtail + Grafana (Loki integration)
+# 
+# Usage:
+#   docker-compose -f docker-compose.logging.yml up -d
+
+version: "3.8"
+
+services:
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: secflow-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - secflow-logs
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: secflow-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/local-config.yaml:/etc/promtail/local-config.yaml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail-data:/var/lib/promtail
+    command: -config.file=/etc/promtail/local-config.yaml
+    networks:
+      - secflow-logs
+    depends_on:
+      - loki
+
+  # Optional: Grafana with Loki plugin pre-configured
+  # Uncomment if you want a dedicated log viewing Grafana instance
+  # grafana-logs:
+  #   image: grafana/grafana:10.2.3
+  #   container_name: secflow-grafana-logs
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3001:3000"
+  #   volumes:
+  #     - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+  #     - grafana-logs-data:/var/lib/grafana
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #     - GF_USERS_ALLOW_SIGN_UP=false
+  #   networks:
+  #     - secflow-logs
+  #   depends_on:
+  #     - loki
+
+volumes:
+  loki-data:
+    driver: local
+  promtail-data:
+    driver: local
+  grafana-logs-data:
+    driver: local
+
+networks:
+  secflow-logs:
+    name: secflow-logs
+    driver: bridge
