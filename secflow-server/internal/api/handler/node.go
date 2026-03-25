@@ -186,25 +186,15 @@ func (h *NodeHandler) updateNodeInfoFromHeartbeat(ctx context.Context, nodeID st
 		return
 	}
 
-	// Update fields from heartbeat
-	if ip, ok := info["ip"].(string); ok && ip != "" {
-		node.Info.IP = ip
-	}
-	if publicIP, ok := info["public_ip"].(string); ok && publicIP != "" {
-		node.Info.PublicIP = publicIP
-	}
-	if mac, ok := info["mac"].(string); ok && mac != "" {
-		node.Info.MAC = mac
-	}
-	if os, ok := info["os"].(string); ok && os != "" {
-		node.Info.OS = os
-	}
-	if arch, ok := info["arch"].(string); ok && arch != "" {
-		node.Info.Arch = arch
-	}
-	if cpuModel, ok := info["cpu_model"].(string); ok && cpuModel != "" {
-		node.Info.CPUModel = cpuModel
-	}
+	// Update string fields from heartbeat using helper
+	setFieldIfValid(info, "ip", func(v string) { node.Info.IP = v })
+	setFieldIfValid(info, "public_ip", func(v string) { node.Info.PublicIP = v })
+	setFieldIfValid(info, "mac", func(v string) { node.Info.MAC = v })
+	setFieldIfValid(info, "os", func(v string) { node.Info.OS = v })
+	setFieldIfValid(info, "arch", func(v string) { node.Info.Arch = v })
+	setFieldIfValid(info, "cpu_model", func(v string) { node.Info.CPUModel = v })
+
+	// Update numeric fields
 	if cpuCores, ok := info["cpu_cores"].(float64); ok {
 		node.Info.CPUCores = int(cpuCores)
 	}
@@ -223,6 +213,8 @@ func (h *NodeHandler) updateNodeInfoFromHeartbeat(ctx context.Context, nodeID st
 	if diskUsed, ok := info["disk_used"].(float64); ok {
 		node.Info.DiskUsed = uint64(diskUsed)
 	}
+
+	// Update net_cards array
 	if netCards, ok := info["net_cards"].([]interface{}); ok {
 		cards := make([]string, 0, len(netCards))
 		for _, card := range netCards {
@@ -235,7 +227,7 @@ func (h *NodeHandler) updateNodeInfoFromHeartbeat(ctx context.Context, nodeID st
 
 	// Save updated node info
 	_ = h.nodeRepo.UpdateInfo(ctx, nodeID, node.Info)
-	
+
 	// Update task stats with current performance metrics
 	if node.Info.MemTotal > 0 {
 		memPercent := float64(node.Info.MemUsed) / float64(node.Info.MemTotal) * 100.0
@@ -244,9 +236,16 @@ func (h *NodeHandler) updateNodeInfoFromHeartbeat(ctx context.Context, nodeID st
 	node.TaskStats.CPUPercent = node.Info.CPUPercent
 	node.TaskStats.CurrentTasks = h.Hub.GetTaskCount(nodeID)
 	node.TaskStats.UpdatedAt = time.Now()
-	
+
 	// Update node stats in repository
 	_ = h.nodeRepo.UpdateTaskStats(ctx, nodeID, node.TaskStats)
+}
+
+// setFieldIfValid extracts a string value from info map and calls setter if valid.
+func setFieldIfValid(info map[string]interface{}, key string, setter func(string)) {
+	if v, ok := info[key].(string); ok && v != "" {
+		setter(v)
+	}
 }
 
 // OnDisconnect is called when a node disconnects.
@@ -392,42 +391,6 @@ func (h *NodeHandler) processVulnRecords(ctx context.Context, nodeID, taskID str
 
 // processArticleRecords converts raw maps to Article and saves them.
 func (h *NodeHandler) processArticleRecords(ctx context.Context, nodeID, taskID string, rawData []map[string]any) {
-	for _, item := range rawData {
-		a := &model.Article{}
-		
-		// Map string fields
-		a.Title = getString(item, "title")
-		a.Summary = getString(item, "summary")
-		a.Content = getString(item, "content")
-		a.Author = getString(item, "author")
-		a.Source = getString(item, "source")
-		a.URL = getString(item, "url")
-		a.Image = getString(item, "image")
-		
-		// Handle PublishedAt
-		if pubAt := getString(item, "published_at"); pubAt != "" {
-			if t, err := time.Parse(time.RFC3339, pubAt); err == nil {
-				a.PublishedAt = t
-			} else if t, err := time.Parse("2006-01-02T15:04:05Z", pubAt); err == nil {
-				a.PublishedAt = t
-			} else if t, err := time.Parse("2006-01-02", pubAt); err == nil {
-				a.PublishedAt = t
-			}
-		}
-		
-		// Handle Tags
-		if tags, ok := item["tags"].([]any); ok {
-			for _, t := range tags {
-				if s, ok := t.(string); ok {
-					a.Tags = append(a.Tags, s)
-				}
-			}
-		}
-		
-		a.ReportedBy = nodeID
-	}
-	
-	// Convert to Article slice
 	articles := make([]*model.Article, 0, len(rawData))
 	for _, item := range rawData {
 		a := &model.Article{
