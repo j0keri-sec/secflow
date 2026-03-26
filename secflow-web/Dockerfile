@@ -2,10 +2,25 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* package-lock.json* yarn.lock* ./
-RUN npm install --frozen-lockfile 2>/dev/null || npm install
+
+# Detect package manager from lock file
+RUN if [ -f pnpm-lock.yaml ]; then \
+      npm install -g pnpm && pnpm install --frozen-lockfile; \
+    elif [ -f yarn.lock ]; then \
+      npm install -g yarn && yarn install --frozen-lockfile; \
+    elif [ -f package-lock.json ]; then \
+      npm ci; \
+    else \
+      npm install; \
+    fi
 
 COPY . .
-RUN npm run build
+
+# Build command based on available package manager
+RUN if [ -f pnpm-lock.yaml ]; then pnpm run build; \
+    elif [ -f yarn.lock ]; then yarn build; \
+    else npm run build; \
+    fi
 
 # ── Runtime: nginx ────────────────────────────────────────────────────────
 FROM nginx:1.25-alpine

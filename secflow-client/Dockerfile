@@ -22,7 +22,8 @@ WORKDIR /app
 RUN mkdir -p /app/data /app/logs
 
 COPY --from=builder /app/secflow-client .
-COPY client.example.yaml client.yaml
+# 使用环境变量覆盖配置，运行时可通过 -e SECFLOW_CONFIG=/path/to/config.yaml 指定
+# 默认使用内嵌配置，无需复制 yaml 文件
 
 # 健康检查端点
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
