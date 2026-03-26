@@ -56,7 +56,8 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - secflow-net
+      secflow-net:
+        ipv4_address: 172.16.100.30
 
   # ─────────────────────────────────────────────
   # Redis - 任务队列和缓存
@@ -82,7 +83,8 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - secflow-net
+      secflow-net:
+        ipv4_address: 172.16.100.31
 
   # ─────────────────────────────────────────────
   # SecFlow Server - 后端服务
@@ -125,7 +127,8 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - secflow-net
+      secflow-net:
+        ipv4_address: 172.16.100.32
 
   # ─────────────────────────────────────────────
   # SecFlow Web - 前端界面
@@ -149,7 +152,8 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - secflow-net
+      secflow-net:
+        ipv4_address: 172.16.100.33
 
   # ─────────────────────────────────────────────
   # SecFlow Client - 漏洞爬取节点
@@ -180,7 +184,8 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - secflow-net
+      secflow-net:
+        ipv4_address: 172.16.100.34
 
 # ─────────────────────────────────────────────
 # 数据卷定义
@@ -201,28 +206,8 @@ volumes:
 # 网络定义
 # ─────────────────────────────────────────────
 #
-# 开发模式 (默认 bridge):
-#   docker network create -d bridge secflow_dev_network
-#
-# 生产模式 (macvlan) - 需要先创建网络:
-#   docker network create -d macvlan \
-#     --subnet=192.168.20.0/24 \
-#     --gateway=192.168.20.1 \
-#     -o parent=ens33 pub_net
-#
-# 然后设置环境变量:
-#   export SECFLOW_NETWORK=pub_net
-#   export SECFLOW_NETWORK_EXTERNAL=true
-#
-# ─────────────────────────────────────────────
 # 静态 IP 配置 (macvlan 模式)
 # ─────────────────────────────────────────────
-# 在对应的服务中添加 ipv4_address，例如:
-#
-#   mongo:
-#     networks:
-#       secflow-net:
-#         ipv4_address: 192.168.20.10
 #
 networks:
   secflow-net:

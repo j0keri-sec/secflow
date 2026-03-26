@@ -107,15 +107,15 @@ ip addr
 
 # 创建 macvlan 网络
 docker network create -d macvlan \
-  --subnet=192.168.20.0/24 \
-  --gateway=192.168.20.1 \
+  --subnet=172.16.100.0/24 \
+  --gateway=172.16.100.254 \
   -o parent=ens33 \
   pub_net
 ```
 
 **参数说明：**
-- `--subnet`: 物理网络网段
-- `--gateway`: 物理网络网关
+- `--subnet`: 物理网络网段 (172.16.100.0/24)
+- `--gateway`: 物理网络网关 (172.16.100.254)
 - `-o parent`: 宿主机网卡名称
 
 ### 2. 配置文件
@@ -143,35 +143,26 @@ NODE_TOKEN_KEY=your_node_token_key
 
 ### 3. 分配静态 IP
 
-修改 `docker-compose.yml` 中对应服务的网络配置：
+docker-compose.yml 中已预配置静态 IP：
 
 ```yaml
 services:
-  mongo:
-    networks:
-      secflow-net:
-        ipv4_address: 192.168.20.10
-
-  redis:
-    networks:
-      secflow-net:
-        ipv4_address: 192.168.20.11
-
-  server:
-    networks:
-      secflow-net:
-        ipv4_address: 192.168.20.12
-
-  web:
-    networks:
-      secflow-net:
-        ipv4_address: 192.168.20.13
-
-  client:
-    networks:
-      secflow-net:
-        ipv4_address: 192.168.20.14
+  mongo:   # 172.16.100.30
+  redis:   # 172.16.100.31
+  server:  # 172.16.100.32
+  web:     # 172.16.100.33
+  client:  # 172.16.100.34
 ```
+
+**IP 分配表：**
+
+| 服务 | IP 地址 | 端口 | 说明 |
+|------|---------|------|------|
+| mongo | 172.16.100.30 | 27017 | MongoDB 数据库 |
+| redis | 172.16.100.31 | 6379 | Redis 缓存/队列 |
+| server | 172.16.100.32 | 8989 | 后端 API |
+| web | 172.16.100.33 | 80/3000 | 前端界面 |
+| client | 172.16.100.34 | - | 漏洞爬取节点 |
 
 ### 4. 启动服务
 ```bash
