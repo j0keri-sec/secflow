@@ -426,6 +426,20 @@ func (r *InviteCodeRepo) ListByOwner(ctx context.Context, ownerID bson.ObjectID)
 	return codes, cursor.All(ctx, &codes)
 }
 
+// Delete removes an invite code (owner only).
+func (r *InviteCodeRepo) Delete(ctx context.Context, code string, ownerID bson.ObjectID) error {
+	result, err := r.db.coll(model.CollInviteCodes).DeleteOne(ctx,
+		bson.M{"code": code, "owner_id": ownerID},
+	)
+	if err != nil {
+		return err
+	}
+	if result.DeletedCount == 0 {
+		return fmt.Errorf("invite code not found or not owned by user")
+	}
+	return nil
+}
+
 // --------------------------------------------------------------------------
 // NodeRepo
 // --------------------------------------------------------------------------

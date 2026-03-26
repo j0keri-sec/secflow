@@ -53,6 +53,8 @@ type InviteCode struct {
 	IsAdmin   bool          `bson:"is_admin"       json:"is_admin"`
 	CreatedAt time.Time     `bson:"created_at"     json:"created_at"`
 	UsedAt    time.Time     `bson:"used_at,omitempty" json:"used_at,omitempty"`
+	// ExpiresAt is when this code expires (optional, 7 days if not set).
+	ExpiresAt time.Time     `bson:"expires_at,omitempty" json:"expires_at,omitempty"`
 }
 
 // PasswordResetToken stores one-time password reset tokens.

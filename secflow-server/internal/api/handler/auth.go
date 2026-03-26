@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -82,8 +83,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		}
 		var codeErr error
 		inviteCode, codeErr = h.inviteRepo.GetByCode(c, req.InviteCode)
-		if codeErr != nil || inviteCode == nil || inviteCode.Used {
-			fail(c, http.StatusBadRequest, "invalid or already-used invite code")
+		if codeErr != nil || inviteCode == nil {
+			fail(c, http.StatusBadRequest, "invalid invite code")
+			return
+		}
+		if inviteCode.Used {
+			fail(c, http.StatusBadRequest, "invite code has already been used")
+			return
+		}
+		if !inviteCode.ExpiresAt.IsZero() && time.Now().After(inviteCode.ExpiresAt) {
+			fail(c, http.StatusBadRequest, "invite code has expired")
 			return
 		}
 		if inviteCode.IsAdmin {
@@ -234,7 +243,11 @@ func (h *AuthHandler) GenerateInviteCode(c *gin.Context) {
 
 	const userLimit = 5
 	if role != string(model.RoleAdmin) {
-		count, _ := h.inviteRepo.CountByOwner(c, oid)
+		count, err := h.inviteRepo.CountByOwner(c, oid)
+		if err != nil {
+			fail(c, http.StatusInternalServerError, "failed to check invite code count")
+			return
+		}
 		if count >= userLimit {
 			fail(c, http.StatusForbidden, fmt.Sprintf("invite code limit reached (%d)", userLimit))
 			return
@@ -242,9 +255,11 @@ func (h *AuthHandler) GenerateInviteCode(c *gin.Context) {
 	}
 
 	code := &model.InviteCode{
-		Code:    generateCode(),
-		OwnerID: oid,
-		IsAdmin: role == string(model.RoleAdmin),
+		Code:      generateCode(),
+		OwnerID:   oid,
+		IsAdmin:   role == string(model.RoleAdmin),
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour), // 7 days expiration
 	}
 	if err := h.inviteRepo.Create(c, code); err != nil {
 		fail(c, http.StatusInternalServerError, "failed to create invite code")
