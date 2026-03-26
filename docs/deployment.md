@@ -189,6 +189,58 @@ docker exec secflow_server ping -c 3 192.168.20.1
 
 ---
 
+## 客户端节点部署
+
+### 客户端连接说明
+
+客户端（secflow-client）以 **server 模式** 运行时，需要通过 WebSocket 连接到服务器。
+
+### 1. 服务端配置
+
+确保服务器有固定 IP，例如 `192.168.20.12`：
+```yaml
+server:
+  networks:
+    secflow-net:
+      ipv4_address: 192.168.20.12
+```
+
+### 2. 客户端配置
+
+客户端配置 `client.yaml`：
+```yaml
+server:
+  api_url: "http://192.168.20.12:8989/api/v1"
+  ws_url: "ws://192.168.20.12:8989/api/v1/ws/node"
+  token_key: "your-node-token-key"
+```
+
+### 3. 多节点部署
+
+在不同机器上部署客户端时，只需要修改 `client.yaml` 中的服务器地址：
+
+```yaml
+# 北京节点
+server:
+  api_url: "http://服务器公网IP:8989/api/v1"
+  ws_url: "ws://服务器公网IP:8989/api/v1/ws/node"
+  token_key: "your-node-token-key"
+```
+
+### 4. 客户端容器部署
+
+客户端使用 Docker 部署时，确保网络可以访问服务器：
+```bash
+docker run -d \
+  --name secflow-client \
+  -e SECFLOW_API_URL="http://192.168.20.12:8989/api/v1" \
+  -e SECFLOW_WS_URL="ws://192.168.20.12:8989/api/v1/ws/node" \
+  -e SECFLOW_TOKEN_KEY="your-node-token-key" \
+  secflow/client:latest
+```
+
+---
+
 ## 配置参考
 
 ### 环境变量

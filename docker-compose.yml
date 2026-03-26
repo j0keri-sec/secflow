@@ -200,7 +200,7 @@ volumes:
 # ─────────────────────────────────────────────
 # 网络定义
 # ─────────────────────────────────────────────
-# 
+#
 # 开发模式 (默认 bridge):
 #   docker network create -d bridge secflow_dev_network
 #
@@ -210,7 +210,19 @@ volumes:
 #     --gateway=192.168.20.1 \
 #     -o parent=ens33 pub_net
 #
-# 然后设置环境变量: export SECFLOW_NETWORK_MODE=macvlan
+# 然后设置环境变量:
+#   export SECFLOW_NETWORK=pub_net
+#   export SECFLOW_NETWORK_EXTERNAL=true
+#
+# ─────────────────────────────────────────────
+# 静态 IP 配置 (macvlan 模式)
+# ─────────────────────────────────────────────
+# 在对应的服务中添加 ipv4_address，例如:
+#
+#   mongo:
+#     networks:
+#       secflow-net:
+#         ipv4_address: 192.168.20.10
 #
 networks:
   secflow-net:
