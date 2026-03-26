@@ -1,15 +1,15 @@
 # SecFlow Client Configuration
 server:
-  api_url: "http://127.0.0.1:8080/api/v1"
-  ws_url: "ws://127.0.0.1:8080/api/v1/ws/node"
+  api_url: "http://127.0.0.1:8989/api/v1"
+  ws_url: "ws://127.0.0.1:8989/api/v1/ws/node"
   token_key: "secflow-node-token-2026"
 
 node_id: "8fd65d0f-c14b-455c-9b42-3a1990710cec"
 name: "secflow-node-test"
 
-log_level: "debug"
-log_path: "secflow_client.log"
-db_path: "./secflow_client.db"
+log_level: "info"
+log_path: "/app/client.log"
+db_path: "/app/data/secflow.db"
 
 connection:
   reconnect_interval: 5s

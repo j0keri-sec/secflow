@@ -162,6 +162,9 @@ func (c *Config) applyEnv() {
 	if v := os.Getenv("NODE_TOKEN_KEY"); v != "" {
 		c.Node.TokenKey = v
 	}
+	if v := os.Getenv("SECFLOW_TOKEN_KEY"); v != "" {
+		c.Node.TokenKey = v
+	}
 	if v := os.Getenv("CORS_ORIGINS"); v != "" {
 		c.Server.CORSOrigins = strings.Split(v, ",")
 	}

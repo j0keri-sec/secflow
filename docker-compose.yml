@@ -77,17 +77,19 @@ services:
       # JWT 配置
       SECFLOW_JWT_SECRET: "${JWT_SECRET:-dev-secret-change-in-prod}"
       # 服务端口
-      SECFLOW_PORT: "8080"
+      SECFLOW_PORT: "8989"
       # 日志级别
       SECFLOW_LOG_LEVEL: "${SECFLOW_LOG_LEVEL:-debug}"
       # 运行模式
       SECFLOW_ENV: "development"
+      # Node Token 认证
+      NODE_TOKEN_KEY: "${NODE_TOKEN_KEY:-secflow-node-token-key-change-me}"
     ports:
-      - "${SERVER_PORT:-8080}:8080"
+      - "${SERVER_PORT:-8989}:8989"
     volumes:
       - server_logs:/app/logs
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8989/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -120,30 +122,29 @@ services:
       - secflow-net
 
   # ─────────────────────────────────────────────
-  # SecFlow Client - 漏洞爬取节点 (可选)
-  # 取消注释即可启用，默认连接本地 server
+  # SecFlow Client - 漏洞爬取节点
   # ─────────────────────────────────────────────
-  # client:
-  #   build:
-  #     context: ./secflow-client
-  #     dockerfile: Dockerfile
-  #   image: secflow/client:latest
-  #   container_name: secflow_client
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - server
-  #   environment:
-  #     SECFLOW_API_URL: "http://server:8080/api/v1"
-  #     SECFLOW_WS_URL: "ws://server:8080/api/v1/ws/node"
-  #     SECFLOW_NODE_NAME: "docker-node-01"
-  #     SECFLOW_NODE_REGION: "Docker"
-  #     SECFLOW_TOKEN_KEY: "${NODE_TOKEN_KEY:-secflow-node-token}"
-  #     SECFLOW_LOG_LEVEL: "info"
-  #   volumes:
-  #     - client_data:/app/data
-  #     - client_logs:/app/logs
-  #   networks:
-  #     - secflow-net
+  client:
+    build:
+      context: ./secflow-client
+      dockerfile: Dockerfile
+    image: secflow/client:latest
+    container_name: secflow_client
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      SECFLOW_API_URL: "http://server:8989/api/v1"
+      SECFLOW_WS_URL: "ws://server:8989/api/v1/ws/node"
+      SECFLOW_NODE_NAME: "docker-node-01"
+      SECFLOW_NODE_REGION: "Docker"
+      SECFLOW_TOKEN_KEY: "${NODE_TOKEN_KEY:-secflow-node-token}"
+      SECFLOW_LOG_LEVEL: "info"
+    volumes:
+      - client_data:/app/data
+      - client_logs:/app/logs
+    networks:
+      - secflow-net
 
 # ─────────────────────────────────────────────
 # 数据卷定义
@@ -155,10 +156,10 @@ volumes:
     driver: local
   server_logs:
     driver: local
-  # client_data:
-  #   driver: local
-  # client_logs:
-  #   driver: local
+  client_data:
+    driver: local
+  client_logs:
+    driver: local
 
 # ─────────────────────────────────────────────
 # 网络定义

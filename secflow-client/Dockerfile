@@ -1,9 +1,12 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /build
 
 # CGO is required for go-sqlite3 and gopsutil
 RUN apk add --no-cache git ca-certificates gcc musl-dev
+
+# Go proxy for Chinese network
+ENV GOPROXY=https://goproxy.cn,direct
 
 COPY go.mod ./
 RUN go mod download
@@ -22,8 +25,7 @@ WORKDIR /app
 RUN mkdir -p /app/data /app/logs
 
 COPY --from=builder /app/secflow-client .
-# 使用环境变量覆盖配置，运行时可通过 -e SECFLOW_CONFIG=/path/to/config.yaml 指定
-# 默认使用内嵌配置，无需复制 yaml 文件
+COPY client.yaml /app/client.yaml
 
 # 健康检查端点
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
@@ -34,7 +36,6 @@ ENV SECFLOW_MODE=server
 ENV SECFLOW_LOG_LEVEL=info
 ENV SECFLOW_PORT=8081
 ENV SECFLOW_DB_PATH=/app/data/secflow.db
-ENV SECFLOW_LOG_PATH=/app/logs
 
 EXPOSE 8081
 
