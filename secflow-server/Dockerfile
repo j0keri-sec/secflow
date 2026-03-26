@@ -3,7 +3,7 @@ FROM golang:1.23-alpine AS builder
 WORKDIR /build
 
 # Install CGO dependencies (none needed for server)
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache git ca-certificates curl
 
 # Use Chinese Go module mirror for faster download in China
 ENV GOPROXY=https://goproxy.cn,direct
@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/secflow
 # ── Runtime stage ─────────────────────────────────────────────────────────
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata curl
 WORKDIR /app
 COPY --from=builder /app/secflow-server .
 COPY config/config.example.yaml config.yaml

@@ -17,7 +17,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/secflow
 # ── Runtime stage ─────────────────────────────────────────────────────────
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata libgcc libstdc++
+RUN apk add --no-cache ca-certificates tzdata libgcc libstdc++ procps
 
 WORKDIR /app
 
