@@ -21,6 +21,7 @@ type Config struct {
 	Grabber   GrabberConfig   `yaml:"grabber"`
 	Node      NodeConfig      `yaml:"node"`
 	Scheduler SchedulerConfig `yaml:"scheduler"`
+	Email     EmailConfig     `yaml:"email"`
 }
 
 // NodeConfig holds node authentication settings.
@@ -91,6 +92,18 @@ type SchedulerConfig struct {
 	TimeoutCheck time.Duration `yaml:"timeout_check"`
 }
 
+// EmailConfig holds SMTP email configuration.
+type EmailConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Host     string `yaml:"host"`     // SMTP server host (e.g., smtp.gmail.com)
+	Port     int    `yaml:"port"`     // SMTP server port (e.g., 587)
+	Username string `yaml:"username"` // SMTP username (usually email address)
+	Password string `yaml:"password"` // SMTP password or app password
+	From     string `yaml:"from"`     // Sender email address
+	FromName string `yaml:"from_name"` // Sender display name
+	UseTLS   bool   `yaml:"use_tls"`  // Use STARTTLS (port 587)
+}
+
 // Load reads the YAML config file at path, then applies env overrides.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
@@ -130,6 +143,26 @@ func (c *Config) applyEnv() {
 	}
 	if v := os.Getenv("CORS_ORIGINS"); v != "" {
 		c.Server.CORSOrigins = strings.Split(v, ",")
+	}
+	if v := os.Getenv("SMTP_HOST"); v != "" {
+		c.Email.Host = v
+	}
+	if v := os.Getenv("SMTP_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			c.Email.Port = port
+		}
+	}
+	if v := os.Getenv("SMTP_USERNAME"); v != "" {
+		c.Email.Username = v
+	}
+	if v := os.Getenv("SMTP_PASSWORD"); v != "" {
+		c.Email.Password = v
+	}
+	if v := os.Getenv("SMTP_FROM"); v != "" {
+		c.Email.From = v
+	}
+	if v := os.Getenv("EMAIL_ENABLED"); v == "true" || v == "1" {
+		c.Email.Enabled = true
 	}
 }
 
@@ -197,6 +230,14 @@ func (c *Config) setDefaults() {
 	if c.Scheduler.TimeoutCheck == 0 {
 		c.Scheduler.TimeoutCheck = 1 * time.Minute
 	}
+
+	// Email defaults
+	if c.Email.Port == 0 {
+		c.Email.Port = 587 // Default TLS port
+	}
+	if c.Email.FromName == "" {
+		c.Email.FromName = "SecFlow"
+	}
 }
 
 // Validate checks that required fields are present.
@@ -204,10 +245,25 @@ func (c *Config) Validate() error {
 	if c.MongoDB.URI == "" {
 		return fmt.Errorf("mongodb.uri is required")
 	}
-	if c.JWT.Secret == "secflow-change-me" {
-		// warn only — allow dev startup
-		_, _ = fmt.Fprintln(os.Stderr, "[WARN] jwt.secret is using the default value, please change it")
+
+	// In production mode, enforce strong security secrets
+	if c.Server.Mode == "release" {
+		if c.JWT.Secret == "" || c.JWT.Secret == "secflow-change-me" {
+			return fmt.Errorf("jwt.secret is required in production mode: must be a strong, unique secret")
+		}
+		if c.Node.TokenKey == "" || c.Node.TokenKey == "secflow-node-token-key-change-me" {
+			return fmt.Errorf("node.token_key is required in production mode: must be a strong, unique key")
+		}
+	} else {
+		// Development mode warnings
+		if c.JWT.Secret == "secflow-change-me" {
+			_, _ = fmt.Fprintln(os.Stderr, "[WARN] jwt.secret is using the default value in dev mode, please change it for production")
+		}
+		if c.Node.TokenKey == "secflow-node-token-key-change-me" {
+			_, _ = fmt.Fprintln(os.Stderr, "[WARN] node.token_key is using the default value in dev mode, please change it for production")
+		}
 	}
+
 	if !strings.Contains(c.Grabber.Interval, "m") && !strings.Contains(c.Grabber.Interval, "h") {
 		return fmt.Errorf("grabber.interval must be a Go duration string (e.g. 30m, 1h)")
 	}

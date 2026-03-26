@@ -92,8 +92,37 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	CheckOrigin:     func(r *http.Request) bool { return true }, // origin check done via JWT/token
+	CheckOrigin: func(r *http.Request) bool {
+		// Origin check is defense-in-depth; primary auth is via JWT token in WebSocket handshake
+		// If no origins configured, accept all (auth will still filter)
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // No origin header, let auth handle it
+		}
+
+		// In production, validate origin against allowed origins
+		// This prevents CSRF-style attacks on WebSocket connections
+		if len(allowedOrigins) > 0 {
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					return true
+				}
+			}
+			return false
+		}
+
+		// No origins configured - accept all (but auth will still validate)
+		return true
+	},
 	EnableCompression: true, // enable per-message-deflate compression
+}
+
+// allowedOrigins is set during hub creation from config
+var allowedOrigins []string
+
+// SetAllowedOrigins configures which origins are allowed for WebSocket connections
+func SetAllowedOrigins(origins []string) {
+	allowedOrigins = origins
 }
 
 // Client is a single WebSocket connection from a node.

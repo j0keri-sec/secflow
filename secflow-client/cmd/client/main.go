@@ -510,7 +510,7 @@ func saveNodeID(configPath, nodeID string) error {
 		return fmt.Errorf("marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, out, 0644); err != nil {
+	if err := os.WriteFile(configPath, out, 0600); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
 

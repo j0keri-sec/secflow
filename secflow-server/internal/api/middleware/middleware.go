@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,10 +14,98 @@ import (
 	"github.com/secflow/server/pkg/auth"
 )
 
-const ctxKeyUserID   = "userID"
-const ctxKeyUsername = "username"
-const ctxKeyRole     = "role"
+const ctxKeyUserID    = "userID"
+const ctxKeyUsername  = "username"
+const ctxKeyRole      = "role"
 const ctxKeyRequestID = "request_id"
+
+// RateLimiter implements a simple in-memory rate limiter for auth endpoints.
+// For production with multiple servers, use Redis-based rate limiting.
+type RateLimiter struct {
+	mu       sync.RWMutex
+	requests map[string][]time.Time // IP -> timestamps of recent requests
+	limit    int                   // max requests per window
+	window   time.Duration         // time window
+}
+
+// NewRateLimiter creates a new rate limiter.
+// limit: maximum requests allowed per window
+// window: time window duration
+func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
+	rl := &RateLimiter{
+		requests: make(map[string][]time.Time),
+		limit:    limit,
+		window:   window,
+	}
+	// Start cleanup goroutine
+	go rl.cleanup()
+	return rl
+}
+
+// Allow checks if a request from the given key (e.g., IP) should be allowed.
+func (rl *RateLimiter) Allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	windowStart := now.Add(-rl.window)
+
+	// Filter out old requests
+	var recent []time.Time
+	for _, t := range rl.requests[key] {
+		if t.After(windowStart) {
+			recent = append(recent, t)
+		}
+	}
+
+	if len(recent) >= rl.limit {
+		rl.requests[key] = recent
+		return false
+	}
+
+	rl.requests[key] = append(recent, now)
+	return true
+}
+
+// cleanup periodically removes old entries to prevent memory growth
+func (rl *RateLimiter) cleanup() {
+	ticker := time.NewTicker(5 * time.Minute)
+	for range ticker.C {
+		rl.mu.Lock()
+		now := time.Now()
+		windowStart := now.Add(-rl.window)
+		for key, times := range rl.requests {
+			var recent []time.Time
+			for _, t := range times {
+				if t.After(windowStart) {
+					recent = append(recent, t)
+				}
+			}
+			if len(recent) == 0 {
+				delete(rl.requests, key)
+			} else {
+				rl.requests[key] = recent
+			}
+		}
+		rl.mu.Unlock()
+	}
+}
+
+// RateLimit returns a Gin middleware that rate limits requests by IP.
+// Use this for sensitive endpoints like login, password reset, etc.
+func RateLimit(limiter *RateLimiter) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		if !limiter.Allow(ip) {
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error": "rate limit exceeded, please try again later",
+				"code":  429,
+			})
+			return
+		}
+		c.Next()
+	}
+}
 
 // RequestID middleware generates a unique request ID for each request.
 func RequestID() gin.HandlerFunc {

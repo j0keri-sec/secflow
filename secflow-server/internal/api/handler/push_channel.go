@@ -29,7 +29,12 @@ func (h *PushChannelHandler) List(c *gin.Context) {
 		Err(c, http.StatusInternalServerError, "database error")
 		return
 	}
-	OK(c, items)
+	// Filter sensitive config fields before returning
+	sanitized := make([]*model.PushChannel, len(items))
+	for i, ch := range items {
+		sanitized[i] = sanitizePushChannel(ch)
+	}
+	OK(c, sanitized)
 }
 
 // Create godoc  POST /api/v1/push-channels
@@ -46,7 +51,7 @@ func (h *PushChannelHandler) Create(c *gin.Context) {
 		Err(c, http.StatusInternalServerError, "create failed")
 		return
 	}
-	OK(c, ch)
+	OK(c, sanitizePushChannel(&ch))
 }
 
 // Update godoc  PATCH /api/v1/push-channels/:id
@@ -81,4 +86,53 @@ func (h *PushChannelHandler) Delete(c *gin.Context) {
 		return
 	}
 	OK(c, nil)
+}
+
+// sanitizePushChannel removes sensitive fields from PushChannel before returning to clients.
+// This prevents exposure of webhook URLs, tokens, and secrets.
+func sanitizePushChannel(ch *model.PushChannel) *model.PushChannel {
+	if ch == nil {
+		return nil
+	}
+	// Create a copy to avoid modifying the original
+	sanitized := &model.PushChannel{
+		ID:        ch.ID,
+		Name:      ch.Name,
+		Type:      ch.Type,
+		Config:    make(map[string]string),
+		Enabled:   ch.Enabled,
+		CreatedAt: ch.CreatedAt,
+		UpdatedAt: ch.UpdatedAt,
+	}
+	// Filter sensitive config keys
+	sensitiveKeys := []string{"url", "webhook", "token", "secret", "password", "key", "api_key"}
+	for k, v := range ch.Config {
+		isSensitive := false
+		for _, sk := range sensitiveKeys {
+			if k == sk || contains(k, sk+"_") || contains(k, "_"+sk) {
+				isSensitive = true
+				break
+			}
+		}
+		if isSensitive {
+			sanitized.Config[k] = "***REDACTED***"
+		} else {
+			sanitized.Config[k] = v
+		}
+	}
+	return sanitized
+}
+
+// contains checks if s contains substr (case-insensitive would be better but this is simple)
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && findSubstring(s, substr)
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,6 +25,7 @@ import (
 	"github.com/secflow/server/internal/ws"
 	"github.com/secflow/server/pkg/auth"
 	"github.com/secflow/server/pkg/logger"
+	"github.com/secflow/server/pkg/notify"
 )
 
 func main() {
@@ -68,18 +70,46 @@ func main() {
 	q         := queue.New(rdb)
 	authSvc   := auth.New(cfg.JWT.Secret, cfg.JWT.Expire)
 
-	vulnRepo    := repository.NewVulnRepo(db)
-	userRepo    := repository.NewUserRepo(db)
-	invRepo     := repository.NewInviteCodeRepo(db)
-	nodeRepo    := repository.NewNodeRepo(db)
-	taskRepo    := repository.NewTaskRepo(db)
-	articleRepo := repository.NewArticleRepository(db)
-	pushRepo    := repository.NewPushChannelRepository(db)
-	auditRepo   := repository.NewAuditLogRepository(db)
-	reportRepo  := repository.NewReportRepository(db)
+	vulnRepo       := repository.NewVulnRepo(db)
+	userRepo       := repository.NewUserRepo(db)
+	invRepo        := repository.NewInviteCodeRepo(db)
+	nodeRepo       := repository.NewNodeRepo(db)
+	taskRepo       := repository.NewTaskRepo(db)
+	articleRepo    := repository.NewArticleRepository(db)
+	pushRepo       := repository.NewPushChannelRepository(db)
+	auditRepo      := repository.NewAuditLogRepository(db)
+	reportRepo     := repository.NewReportRepository(db)
+	resetTokenRepo := repository.NewPasswordResetTokenRepo(db)
 	// Initialize report generator with Minimax AI (if configured)
 	reportGen := report.NewGenerator(vulnRepo, articleRepo)
 	// To enable AI: report.NewGeneratorWithAI(vulnRepo, articleRepo, "your-api-key", "your-group-id", report.AIModelGPT4)
+
+	// Email sender for password reset and notifications
+	var emailSender *notify.EmailSender
+	if cfg.Email.Enabled && cfg.Email.Host != "" {
+		emailSender = notify.NewEmailSender(notify.EmailConfig{
+			Host:     cfg.Email.Host,
+			Port:     cfg.Email.Port,
+			Username: cfg.Email.Username,
+			Password: cfg.Email.Password,
+			From:     cfg.Email.From,
+			FromName: cfg.Email.FromName,
+			UseTLS:   cfg.Email.UseTLS,
+		})
+		log.Info().
+			Str("host", cfg.Email.Host).
+			Int("port", cfg.Email.Port).
+			Str("from", cfg.Email.From).
+			Msg("email sender configured")
+	} else {
+		log.Warn().Msg("email sender not configured, password reset tokens will be logged only")
+	}
+
+	// Base URL for password reset links
+	resetBaseURL := os.Getenv("RESET_BASE_URL")
+	if resetBaseURL == "" {
+		resetBaseURL = fmt.Sprintf("http://localhost:%d", cfg.Server.Port)
+	}
 
 	// ── Task Scheduler (dispatches tasks to nodes) ──────────────────────────
 	taskScheduler := scheduler.NewWithConfig(q, taskRepo, nodeRepo, nil, cfg.Scheduler)
@@ -90,6 +120,8 @@ func main() {
 	systemH := handler.NewSystemHandler(scheduleRepo)
 
 	// ── WebSocket Hub ──────────────────────────────────────────────────────
+	// Configure WebSocket origin validation
+	ws.SetAllowedOrigins(cfg.Server.CORSOrigins)
 	// Create hub with node handler callbacks (hub needs handler methods, so create handler first with temp nil hub)
 	tempNodeH := handler.NewNodeHandlerWithScheduler(nodeRepo, taskRepo, vulnRepo, articleRepo, q, nil, cfg.Node.TokenKey, taskScheduler)
 	hub := ws.NewHub(tempNodeH.OnMessage, tempNodeH.OnConnect, tempNodeH.OnDisconnect)
@@ -112,6 +144,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	taskH := handler.NewTaskHandler(taskRepo, q)
+	passwordResetH := handler.NewPasswordResetHandler(userRepo, resetTokenRepo, emailSender, resetBaseURL)
 	r := api.Router(
 		cfg,
 		authSvc,
@@ -125,6 +158,7 @@ func main() {
 		handler.NewAuditLogHandler(auditRepo),
 		handler.NewReportHandler(reportGen, vulnRepo, reportRepo),
 		systemH,
+		passwordResetH,
 	)
 	// Inject scheduler into task handler for stop functionality
 	taskH.SetScheduler(taskScheduler)

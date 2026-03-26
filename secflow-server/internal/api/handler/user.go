@@ -64,7 +64,14 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 
 	set := bson.M{"updated_at": time.Now().UTC()}
 	if patch.Role != "" {
-		set["role"] = patch.Role
+		// Validate role is one of the allowed values
+		switch patch.Role {
+		case model.RoleAdmin, model.RoleEditor, model.RoleViewer:
+			set["role"] = patch.Role
+		default:
+			fail(c, http.StatusBadRequest, "invalid role: must be admin, editor, or viewer")
+			return
+		}
 	}
 	if patch.Active != nil {
 		set["active"] = *patch.Active

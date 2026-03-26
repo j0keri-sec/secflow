@@ -137,11 +137,29 @@ func (p *PagePool) newPage(_ context.Context) (*rod.Page, error) {
 	return newPage, nil
 }
 
-// enableStealth applies stealth evasion measures to the page.
-// TODO: Implement proper stealth mode using rod's stealth features
-// or remove if not needed (currently a placeholder).
+// enableStealth applies stealth evasion measures to reduce automation fingerprinting.
+// This is a basic implementation that removes common webdriver detection flags.
+//
+// Note: For advanced stealth features (Chrome DevTools Protocol stealth), consider
+// using github.com/go-rod/stealth library. The current implementation provides
+// basic fingerprinting reduction sufficient for non-adversarial targets.
 func (p *PagePool) enableStealth(page *rod.Page) error {
-	return nil
+	// Basic stealth: Execute script to remove webdriver flag
+	// Note: page.Eval() runs immediately, not on page load, so this is limited
+	// For full stealth, use rod-stealth library or CDP-level script injection
+	stealthScript := `() => {
+		try {
+			Object.defineProperty(navigator, 'webdriver', {
+				get: () => undefined,
+				configurable: true,
+				enumerable: true
+			});
+		} catch (e) {
+			// Ignore errors - stealth is best-effort
+		}
+	}`
+	_, err := page.Eval(stealthScript)
+	return err
 }
 
 // Close closes all pages in the pool and clears it.

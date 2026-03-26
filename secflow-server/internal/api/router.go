@@ -63,6 +63,7 @@ func Router(
 	auditH     *handler.AuditLogHandler,
 	reportH    *handler.ReportHandler,
 	systemH    *handler.SystemHandler,
+	passwordResetH *handler.PasswordResetHandler,
 ) *gin.Engine {
 	r := gin.New()
 	r.Use(middleware.Recovery())
@@ -70,6 +71,9 @@ func Router(
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(gzipMiddleware())
+
+	// Rate limiter for auth endpoints (5 requests per minute per IP)
+	authRateLimiter := middleware.NewRateLimiter(5, time.Minute)
 
 	// Health probe — no auth required.
 	r.GET("/health", func(c *gin.Context) {
@@ -87,8 +91,15 @@ func Router(
 	// ── Auth ────────────────────────────────────────────────────────────────
 	authGroup := v1.Group("/auth")
 	{
-		authGroup.POST("/register", authH.Register)
-		authGroup.POST("/login",    authH.Login)
+		// Rate limit sensitive auth endpoints
+		authGroup.POST("/register", middleware.RateLimit(authRateLimiter), authH.Register)
+		authGroup.POST("/login", middleware.RateLimit(authRateLimiter), authH.Login)
+
+		// Password reset - no auth required but rate limited (email enumeration prevention is built-in)
+		if passwordResetH != nil {
+			authGroup.POST("/reset/request", middleware.RateLimit(authRateLimiter), passwordResetH.RequestReset)
+			authGroup.POST("/reset/confirm", middleware.RateLimit(authRateLimiter), passwordResetH.ConfirmReset)
+		}
 
 		authed := authGroup.Group("", middleware.JWTAuth(authSvc))
 		{

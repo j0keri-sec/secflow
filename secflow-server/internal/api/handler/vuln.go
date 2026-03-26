@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/secflow/server/internal/repository"
@@ -43,7 +44,8 @@ func (h *VulnHandler) List(c *gin.Context) {
 
 	items, total, err := h.vulnRepo.List(c, filter)
 	if err != nil {
-		fail(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Msg("failed to list vulnerabilities")
+		fail(c, http.StatusInternalServerError, "failed to retrieve vulnerabilities")
 		return
 	}
 	okPage(c, total, page, pageSize, items)
@@ -56,7 +58,8 @@ func (h *VulnHandler) Get(c *gin.Context) {
 	key := c.Param("id")
 	v, err := h.vulnRepo.GetByKey(c, key)
 	if err != nil {
-		fail(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Str("key", key).Msg("failed to get vulnerability")
+		fail(c, http.StatusInternalServerError, "failed to retrieve vulnerability")
 		return
 	}
 	if v == nil {
@@ -76,7 +79,8 @@ func (h *VulnHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err = h.vulnRepo.Delete(c, id); err != nil {
-		fail(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Str("id", id.Hex()).Msg("failed to delete vulnerability")
+		fail(c, http.StatusInternalServerError, "failed to delete vulnerability")
 		return
 	}
 	ok(c, nil)

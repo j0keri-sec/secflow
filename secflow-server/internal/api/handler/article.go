@@ -3,7 +3,9 @@ package handler
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +19,45 @@ import (
 	"github.com/secflow/server/internal/model"
 	"github.com/secflow/server/internal/repository"
 )
+
+// isPrivateURL checks if a URL points to a private/internal network.
+// This prevents SSRF attacks that target internal services.
+func isPrivateURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return true // Treat unparseable URLs as private
+	}
+
+	// Only allow HTTPS
+	if u.Scheme != "https" {
+		return true
+	}
+
+	host := u.Hostname()
+	if host == "" {
+		return true
+	}
+
+	// Check for IP addresses
+	ip := net.ParseIP(host)
+	if ip != nil {
+		// Block private, loopback, and link-local addresses
+		return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast()
+	}
+
+	// Block known internal hostnames
+	lowerHost := strings.ToLower(host)
+	if strings.HasSuffix(lowerHost, ".internal") ||
+		strings.HasSuffix(lowerHost, ".local") ||
+		strings.HasSuffix(lowerHost, ".localhost") ||
+		lowerHost == "localhost" ||
+		strings.HasPrefix(lowerHost, "metadata.google.internal") ||
+		strings.HasPrefix(lowerHost, "169.254.169.254") {
+		return true
+	}
+
+	return false
+}
 
 // ArticleHandler handles article-related HTTP endpoints.
 type ArticleHandler struct {
@@ -133,6 +174,13 @@ func (h *ArticleHandler) UploadImageFromURL(c *gin.Context) {
 		return
 	}
 
+	// SSRF protection: reject private/internal URLs
+	if isPrivateURL(req.ImageURL) {
+		log.Warn().Str("url", req.ImageURL).Msg("SSRF attempt blocked: private URL not allowed")
+		Err(c, http.StatusBadRequest, "image URL must be a public HTTPS URL")
+		return
+	}
+
 	// Create uploads directory if it doesn't exist
 	uploadDir := "./uploads/images"
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
@@ -242,24 +290,31 @@ func (h *ArticleHandler) BulkUploadImages(c *gin.Context) {
 	results := make([]map[string]string, 0, len(req.ImageURLs))
 	client := &http.Client{Timeout: 30 * time.Second}
 
-	for _, url := range req.ImageURLs {
-		url = strings.TrimSpace(url)
-		if url == "" {
+	for _, imgURL := range req.ImageURLs {
+		imgURL = strings.TrimSpace(imgURL)
+		if imgURL == "" {
+			continue
+		}
+
+		// SSRF protection: reject private/internal URLs
+		if isPrivateURL(imgURL) {
+			log.Warn().Str("url", imgURL).Msg("SSRF attempt blocked: private URL not allowed")
+			results = append(results, map[string]string{"original": imgURL, "local": "", "error": "private URL not allowed"})
 			continue
 		}
 
 		// Download the image
-		resp, err := client.Get(url)
+		resp, err := client.Get(imgURL)
 		if err != nil {
-			log.Warn().Err(err).Str("url", url).Msg("failed to download image")
-			results = append(results, map[string]string{"original": url, "local": "", "error": err.Error()})
+			log.Warn().Err(err).Str("url", imgURL).Msg("failed to download image")
+			results = append(results, map[string]string{"original": imgURL, "local": "", "error": err.Error()})
 			continue
 		}
 
 		contentType := resp.Header.Get("Content-Type")
 		if !strings.HasPrefix(contentType, "image/") {
 			resp.Body.Close()
-			results = append(results, map[string]string{"original": url, "local": "", "error": "not an image"})
+			results = append(results, map[string]string{"original": imgURL, "local": "", "error": "not an image"})
 			continue
 		}
 
@@ -270,7 +325,7 @@ func (h *ArticleHandler) BulkUploadImages(c *gin.Context) {
 		out, err := os.Create(filepath)
 		if err != nil {
 			resp.Body.Close()
-			results = append(results, map[string]string{"original": url, "local": "", "error": err.Error()})
+			results = append(results, map[string]string{"original": imgURL, "local": "", "error": err.Error()})
 			continue
 		}
 
@@ -280,12 +335,12 @@ func (h *ArticleHandler) BulkUploadImages(c *gin.Context) {
 
 		if err != nil {
 			os.Remove(filepath)
-			results = append(results, map[string]string{"original": url, "local": "", "error": err.Error()})
+			results = append(results, map[string]string{"original": imgURL, "local": "", "error": err.Error()})
 			continue
 		}
 
 		localPath := "/uploads/images/" + filename
-		results = append(results, map[string]string{"original": url, "local": localPath})
+		results = append(results, map[string]string{"original": imgURL, "local": localPath})
 	}
 
 	OK(c, gin.H{"results": results})

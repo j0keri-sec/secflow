@@ -271,3 +271,16 @@ func (r *PasswordResetTokenRepo) DeleteExpired(ctx context.Context) (int64, erro
 	}
 	return result.DeletedCount, nil
 }
+
+// InvalidateAllForUser marks all existing unused tokens for a user as used.
+// This prevents accumulation of old tokens when user requests multiple resets.
+func (r *PasswordResetTokenRepo) InvalidateAllForUser(ctx context.Context, userID bson.ObjectID) error {
+	_, err := r.db.coll(model.CollPasswordResetTokens).UpdateMany(ctx,
+		bson.M{
+			"user_id": userID,
+			"used":    false,
+		},
+		bson.M{"$set": bson.M{"used": true}},
+	)
+	return err
+}

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,7 +14,12 @@ import (
 	"github.com/secflow/server/internal/model"
 	"github.com/secflow/server/internal/repository"
 	"github.com/secflow/server/pkg/auth"
+	"github.com/secflow/server/pkg/notify"
 )
+
+// minResponseTime is the minimum time to wait before responding
+// to prevent timing attacks on email enumeration.
+const minResponseTime = 100 * time.Millisecond
 
 // PasswordResetHandler handles password reset requests.
 // It implements a secure flow where users can request a password reset
@@ -22,6 +28,8 @@ type PasswordResetHandler struct {
 	userRepo       *repository.UserRepo
 	resetTokenRepo *repository.PasswordResetTokenRepo
 	tokenExpire    time.Duration // Token validity duration (default: 15 minutes)
+	emailSender    *notify.EmailSender
+	baseURL        string // Base URL for password reset link (e.g., https://secflow.example.com)
 }
 
 // NewPasswordResetHandler creates a new PasswordResetHandler instance.
@@ -29,14 +37,18 @@ type PasswordResetHandler struct {
 // Parameters:
 //   - userRepo: User repository for user data access
 //   - resetTokenRepo: Repository for password reset tokens
+//   - emailSender: Email sender for sending reset tokens (can be nil in dev mode)
+//   - baseURL: Base URL for password reset link
 //
 // Returns:
 //   - *PasswordResetHandler: Configured handler instance
-func NewPasswordResetHandler(userRepo *repository.UserRepo, resetTokenRepo *repository.PasswordResetTokenRepo) *PasswordResetHandler {
+func NewPasswordResetHandler(userRepo *repository.UserRepo, resetTokenRepo *repository.PasswordResetTokenRepo, emailSender *notify.EmailSender, baseURL string) *PasswordResetHandler {
 	return &PasswordResetHandler{
 		userRepo:       userRepo,
 		resetTokenRepo: resetTokenRepo,
 		tokenExpire:    15 * time.Minute, // Default 15 minutes validity
+		emailSender:    emailSender,
+		baseURL:        baseURL,
 	}
 }
 
@@ -65,15 +77,27 @@ func (h *PasswordResetHandler) RequestReset(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+	requestStart := time.Now()
 
 	// Find user by email (case-insensitive)
 	user, err := h.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil || user == nil {
+		// Prevent timing attacks: always take minimum time regardless of user existence
+		elapsed := time.Since(requestStart)
+		if elapsed < minResponseTime {
+			time.Sleep(minResponseTime - elapsed)
+		}
 		// Don't reveal whether email exists for security
 		// Return success anyway to prevent email enumeration attacks
 		log.Info().Str("email", req.Email).Msg("password reset requested for non-existent user")
 		ok(c, gin.H{"message": "if the email exists, a reset link has been sent"})
 		return
+	}
+
+	// Invalidate all existing reset tokens for this user to prevent token accumulation
+	if err := h.resetTokenRepo.InvalidateAllForUser(ctx, user.ID); err != nil {
+		log.Warn().Err(err).Str("user_id", user.ID.Hex()).Msg("failed to invalidate old reset tokens")
+		// Continue anyway - this is not a fatal error
 	}
 
 	// Generate cryptographically secure reset token (32 bytes = 64 hex chars)
@@ -101,22 +125,36 @@ func (h *PasswordResetHandler) RequestReset(c *gin.Context) {
 		return
 	}
 
-	// Log token generation (INFO level, not DEBUG)
-	// In production, this would send an email instead
-	log.Info().
-		Str("user_id", user.ID.Hex()).
-		Str("username", user.Username).
-		Msg("password reset token generated")
+	// Send password reset email if email sender is configured
+	if h.emailSender != nil {
+		resetURL := fmt.Sprintf("%s/reset-password?token=%s", h.baseURL, token)
+		if err := h.emailSender.SendPasswordReset(ctx, user.Email, user.Username, token, resetURL); err != nil {
+			log.Error().Err(err).
+				Str("user_id", user.ID.Hex()).
+				Str("email", user.Email).
+				Msg("failed to send password reset email")
+			// Don't fail the request - token is still valid
+			// User can contact support if they don't receive the email
+		} else {
+			log.Info().
+				Str("user_id", user.ID.Hex()).
+				Str("email", user.Email).
+				Msg("password reset email sent successfully")
+		}
+	} else {
+		// Development mode: log the token (masked) for testing
+		log.Info().
+			Str("user_id", user.ID.Hex()).
+			Str("username", user.Username).
+			Str("token_prefix", token[:8]+"...").
+			Msg("password reset token generated (email not configured)")
+	}
 
-	// TODO: Implement email sending - email integration not yet configured.
-	// To implement: integrate with an email provider (SMTP, SendGrid, SES, etc.)
-	// and send the reset token to the user via email.
-	// The raw token (not hashed) should be sent to user.Email.
-	// Example implementation:
-	//   emailClient := email.NewProvider(smtpConfig)
-	//   emailClient.Send(user.Email, "Password Reset", fmt.Sprintf("Your reset token: %s", token))
-	//
-	// Current behavior: token is generated and logged, but no email is sent.
+	// Ensure minimum response time to prevent timing attacks
+	elapsed := time.Since(requestStart)
+	if elapsed < minResponseTime {
+		time.Sleep(minResponseTime - elapsed)
+	}
 
 	ok(c, gin.H{"message": "if the email exists, a reset link has been sent"})
 }
