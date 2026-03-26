@@ -101,6 +101,11 @@ func (d *DB) ensureIndexes(ctx context.Context) error {
 				SetUnique(def.unique).
 				SetSparse(def.sparse),
 		}
+		// Drop existing index with same name but different options to avoid conflicts
+		// Get the auto-generated index name and drop it first
+		indexName := fmt.Sprintf("%s_%s", def.keys[0].Key, def.keys[0].Value)
+		d.coll(def.coll).Indexes().DropOne(ctx, indexName)
+
 		if _, err := d.coll(def.coll).Indexes().CreateOne(ctx, idxModel); err != nil {
 			return fmt.Errorf("create index on %s: %w", def.coll, err)
 		}

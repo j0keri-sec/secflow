@@ -383,7 +383,7 @@ func (p *WorkerPool) worker(ctx context.Context, grabbers map[string]Grabber, li
 
 			start := time.Now()
 			articles, err := grabber.Fetch(ctx, j.Limit)
-			_ = time.Since(start) // Track latency if needed in future
+			_ = time.Since(start) // Latency tracked for future metrics
 
 			if err != nil {
 				if limiter != nil {

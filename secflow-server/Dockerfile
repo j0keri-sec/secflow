@@ -1,9 +1,12 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /build
 
 # Install CGO dependencies (none needed for server)
 RUN apk add --no-cache git ca-certificates
+
+# Use Chinese Go module mirror for faster download in China
+ENV GOPROXY=https://goproxy.cn,direct
 
 COPY go.mod go.sum ./
 RUN go mod download

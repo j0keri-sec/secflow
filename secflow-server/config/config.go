@@ -120,17 +120,38 @@ func Load(path string) (*Config, error) {
 }
 
 // applyEnv overrides fields with environment variables when set.
+// Supports both plain env vars (MONGO_URI, REDIS_ADDR) and SECFLOW_ prefixed vars.
 func (c *Config) applyEnv() {
-	if v := os.Getenv("MONGO_URI"); v != "" {
+	// MongoDB - support both SECFLOW_MONGO_URI and MONGO_URI
+	if v := os.Getenv("SECFLOW_MONGO_URI"); v != "" {
+		c.MongoDB.URI = v
+	} else if v := os.Getenv("MONGO_URI"); v != "" {
 		c.MongoDB.URI = v
 	}
-	if v := os.Getenv("REDIS_ADDR"); v != "" {
+	// Redis - support both SECFLOW_REDIS_URL and REDIS_ADDR
+	// SECFLOW_REDIS_URL can be redis:// URL format or host:port format
+	if v := os.Getenv("SECFLOW_REDIS_URL"); v != "" {
+		c.Redis.Addr = parseRedisURL(v)
+		c.Redis.Password = parseRedisPassword(v)
+	} else if v := os.Getenv("REDIS_ADDR"); v != "" {
 		c.Redis.Addr = v
 	}
-	if v := os.Getenv("JWT_SECRET"); v != "" {
+	// Redis password can also be set directly
+	if v := os.Getenv("SECFLOW_REDIS_PASSWORD"); v != "" {
+		c.Redis.Password = v
+	} else if v := os.Getenv("REDIS_PASSWORD"); v != "" {
+		c.Redis.Password = v
+	}
+	// JWT Secret - support both SECFLOW_JWT_SECRET and JWT_SECRET
+	if v := os.Getenv("SECFLOW_JWT_SECRET"); v != "" {
+		c.JWT.Secret = v
+	} else if v := os.Getenv("JWT_SECRET"); v != "" {
 		c.JWT.Secret = v
 	}
-	if v := os.Getenv("SERVER_MODE"); v != "" {
+	// Server Mode - support both SECFLOW_ENV and SERVER_MODE
+	if v := os.Getenv("SECFLOW_ENV"); v != "" {
+		c.Server.Mode = v
+	} else if v := os.Getenv("SERVER_MODE"); v != "" {
 		c.Server.Mode = v
 	}
 	if v := os.Getenv("SECFLOW_PORT"); v != "" {
@@ -271,4 +292,65 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("scheduler.batch_size must be between 1 and 100")
 	}
 	return nil
+}
+
+// parseRedisURL parses a redis:// URL and returns host:port format.
+// Supports formats like:
+//   - redis://localhost:6379/0
+//   - redis://:password@localhost:6379/0
+//   - localhost:6379 (passthrough)
+func parseRedisURL(redisURL string) string {
+	// If not a URL, assume it's already host:port
+	if !strings.HasPrefix(redisURL, "redis://") {
+		return redisURL
+	}
+
+	// Manually parse redis:// URL
+	// Format: redis://[user:password@]host[:port][/db]
+	rest := redisURL[8:] // Remove "redis://"
+
+	// Find @ to skip auth info
+	if idx := strings.Index(rest, "@"); idx != -1 {
+		rest = rest[idx+1:]
+	}
+
+	// Remove trailing db path if present
+	if dbIdx := strings.Index(rest, "/"); dbIdx != -1 {
+		rest = rest[:dbIdx]
+	}
+
+	// Now rest is host:port or just host
+	if colonIdx := strings.Index(rest, ":"); colonIdx != -1 {
+		host := rest[:colonIdx]
+		port := rest[colonIdx+1:]
+		if port == "" {
+			port = "6379"
+		}
+		return host + ":" + port
+	}
+
+	// No port specified
+	return rest + ":6379"
+}
+
+// parseRedisPassword extracts password from redis:// URL format.
+// Returns empty string if no password is present.
+func parseRedisPassword(redisURL string) string {
+	if !strings.HasPrefix(redisURL, "redis://") {
+		return ""
+	}
+
+	rest := redisURL[8:] // Remove "redis://"
+
+	// Find @ to get password
+	if idx := strings.Index(rest, "@"); idx != -1 {
+		password := rest[:idx]
+		// Skip username if present (user:password format)
+		if colonIdx := strings.Index(password, ":"); colonIdx != -1 {
+			return password[colonIdx+1:]
+		}
+		return password
+	}
+
+	return ""
 }

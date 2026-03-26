@@ -11,7 +11,7 @@ db = db.getSiblingDB('secflow');
 // 用户集合
 db.createCollection('users');
 db.users.createIndex({ 'username': 1 }, { unique: true });
-db.users.createIndex({ 'email': 1 }, { unique: true, sparse: true });
+db.users.createIndex({ 'email': 1 }, { unique: true });
 
 // 漏洞记录集合
 db.createCollection('vuln_records');
