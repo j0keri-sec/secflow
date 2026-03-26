@@ -1,6 +1,36 @@
 # ================================================
-# SecFlow 开发环境 Docker 配置
+# SecFlow Docker 配置
 # 使用方式: docker-compose up -d
+#
+# ─────────────────────────────────────────────
+# 网络模式配置
+# ─────────────────────────────────────────────
+#
+# 模式1: 开发模式 (默认 bridge)
+#   直接运行: docker-compose up -d
+#
+# 模式2: 生产模式 (macvlan) - 容器直接使用物理网络 IP
+#   1. 先创建 macvlan 网络:
+#      docker network create -d macvlan \
+#        --subnet=192.168.20.0/24 \
+#        --gateway=192.168.20.1 \
+#        -o parent=ens33 pub_net
+#
+#   2. 设置环境变量:
+#      export SECFLOW_NETWORK=pub_net
+#      export SECFLOW_NETWORK_EXTERNAL=true
+#
+#   3. 启动服务:
+#      docker-compose up -d
+#
+# ─────────────────────────────────────────────
+# 静态 IP 配置 (macvlan 模式)
+# ─────────────────────────────────────────────
+# 在对应的服务中添加:
+#   networks:
+#     secflow-net:
+#       ipv4_address: 192.168.20.x
+#
 # ================================================
 services:
   # ─────────────────────────────────────────────
@@ -170,7 +200,20 @@ volumes:
 # ─────────────────────────────────────────────
 # 网络定义
 # ─────────────────────────────────────────────
+# 
+# 开发模式 (默认 bridge):
+#   docker network create -d bridge secflow_dev_network
+#
+# 生产模式 (macvlan) - 需要先创建网络:
+#   docker network create -d macvlan \
+#     --subnet=192.168.20.0/24 \
+#     --gateway=192.168.20.1 \
+#     -o parent=ens33 pub_net
+#
+# 然后设置环境变量: export SECFLOW_NETWORK_MODE=macvlan
+#
 networks:
   secflow-net:
     driver: bridge
-    name: secflow_dev_network
+    name: ${SECFLOW_NETWORK:-secflow_dev_network}
+    external: ${SECFLOW_NETWORK_EXTERNAL:-false}
