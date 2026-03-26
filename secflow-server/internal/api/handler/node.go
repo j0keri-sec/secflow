@@ -235,7 +235,9 @@ func (h *NodeHandler) updateNodeInfoFromHeartbeat(ctx context.Context, nodeID st
 		node.TaskStats.MemPercent = memPercent
 	}
 	node.TaskStats.CPUPercent = node.Info.CPUPercent
-	node.TaskStats.CurrentTasks = h.Hub.GetTaskCount(nodeID)
+	if h.Hub != nil {
+		node.TaskStats.CurrentTasks = h.Hub.GetTaskCount(nodeID)
+	}
 	node.TaskStats.UpdatedAt = time.Now()
 
 	// Update node stats in repository
@@ -274,7 +276,9 @@ func (h *NodeHandler) handleTaskResult(ctx context.Context, nodeID string, paylo
 			if node, err := h.nodeRepo.GetByNodeID(ctx, nodeID); err == nil && node != nil {
 				node.TaskStats.TotalTasks++
 				node.TaskStats.FailedTasks++
-				node.TaskStats.CurrentTasks = h.Hub.GetTaskCount(nodeID)
+				if h.Hub != nil {
+					node.TaskStats.CurrentTasks = h.Hub.GetTaskCount(nodeID)
+				}
 				node.TaskStats.UpdatedAt = time.Now()
 				_ = h.nodeRepo.UpdateTaskStats(ctx, nodeID, node.TaskStats)
 			}
