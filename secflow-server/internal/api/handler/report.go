@@ -41,7 +41,7 @@ func (h *ReportHandler) List(c *gin.Context) {
 
 	reports, total, err := h.reportRepo.List(c.Request.Context(), bson.D{}, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve reports"})
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *ReportHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.reportRepo.Create(c.Request.Context(), rep); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create report"})
 		return
 	}
 
@@ -93,7 +93,7 @@ func (h *ReportHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.reportRepo.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete report"})
 		return
 	}
 

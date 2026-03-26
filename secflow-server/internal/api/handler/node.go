@@ -61,7 +61,8 @@ func NewNodeHandlerWithScheduler(nr *repository.NodeRepo, tr *repository.TaskRep
 func (h *NodeHandler) List(c *gin.Context) {
 	nodes, err := h.nodeRepo.List(c)
 	if err != nil {
-		fail(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Msg("failed to list nodes")
+		fail(c, http.StatusInternalServerError, "failed to retrieve nodes")
 		return
 	}
 	// Annotate with real-time online status from the WebSocket hub.
@@ -513,7 +514,8 @@ func (h *NodeHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.nodeRepo.Upsert(c, node); err != nil {
-		fail(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Str("node_id", node.NodeID).Msg("failed to create node")
+		fail(c, http.StatusInternalServerError, "failed to register node")
 		return
 	}
 
@@ -549,7 +551,8 @@ func (h *NodeHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.nodeRepo.Delete(c, id); err != nil {
-		fail(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Str("node_id", id.Hex()).Msg("failed to delete node")
+		fail(c, http.StatusInternalServerError, "failed to delete node")
 		return
 	}
 
@@ -568,7 +571,8 @@ func (h *NodeHandler) RegenerateToken(c *gin.Context) {
 
 	newToken := uuid.New().String()
 	if err := h.nodeRepo.UpdateToken(c, id, newToken); err != nil {
-		fail(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Str("node_id", id.Hex()).Msg("failed to regenerate token")
+		fail(c, http.StatusInternalServerError, "failed to regenerate token")
 		return
 	}
 
