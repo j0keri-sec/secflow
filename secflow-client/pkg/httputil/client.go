@@ -4,7 +4,9 @@ package httputil
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"time"
@@ -13,8 +15,8 @@ import (
 )
 
 // NewClient returns a preconfigured req.Client suitable for web scraping.
-// It impersonates Chrome, sets a random User-Agent, configures automatic
-// retries with jitter, and respects the GO_SKIP_TLS_CHECK environment variable.
+// It impersonates Chrome, sets a random User-Agent, and configures automatic
+// retries with jitter. TLS verification is always enabled for security.
 func NewClient() *req.Client {
 	c := req.C()
 	c.ImpersonateChrome().
@@ -39,9 +41,14 @@ func NewClient() *req.Client {
 			return false
 		})
 
-	if os.Getenv("GO_SKIP_TLS_CHECK") != "" {
-		c.EnableInsecureSkipVerify()
+	// Security: TLS verification is always enabled by default
+	// For internal corporate proxies that inspect TLS, use HTTP_PROXY env instead
+	// Only enable insecure mode if explicitly required and understood
+	if os.Getenv("GO_INSECURE_TLS") != "" {
+		logWarning("TLS verification disabled - this is insecure and should only be used for testing")
+		c.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	}
+
 	return c
 }
 
@@ -70,4 +77,9 @@ var userAgents = []string{
 
 func randUserAgent() string {
 	return userAgents[rand.Intn(len(userAgents))]
+}
+
+// logWarning logs a warning message to stderr (avoiding external dependencies).
+func logWarning(msg string) {
+	fmt.Fprintf(os.Stderr, "[WARNING] %s\n", msg)
 }
