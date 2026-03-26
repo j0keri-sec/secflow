@@ -1,7 +1,9 @@
 package integration
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -194,8 +196,14 @@ func getEnvOrDefault(key, defaultVal string) string {
 	return defaultVal
 }
 
-// marshalJSON is a helper to marshal body to JSON
-func marshalJSON(body interface{}) *os.File {
-	// This is simplified - in real implementation would use bytes.Buffer
-	return nil
+// marshalJSON marshals body to JSON and returns a reader
+func marshalJSON(body interface{}) *bytes.Reader {
+	if body == nil {
+		return bytes.NewReader(nil)
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return bytes.NewReader(nil)
+	}
+	return bytes.NewReader(data)
 }
