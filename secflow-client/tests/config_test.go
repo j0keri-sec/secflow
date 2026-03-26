@@ -89,8 +89,9 @@ token_key: "test-key"
 			name: "server mode missing ws_url",
 			config: `
 mode: server
-api_url: "http://127.0.0.1:8080/api/v1"
-token_key: "test-key"
+server:
+  api_url: "http://127.0.0.1:8080/api/v1"
+  token_key: "test-key"
 `,
 			wantErr: "server.ws_url is required",
 		},
@@ -98,8 +99,9 @@ token_key: "test-key"
 			name: "server mode missing token_key",
 			config: `
 mode: server
-api_url: "http://127.0.0.1:8080/api/v1"
-ws_url: "ws://127.0.0.1:8080/ws/node"
+server:
+  api_url: "http://127.0.0.1:8080/api/v1"
+  ws_url: "ws://127.0.0.1:8080/ws/node"
 `,
 			wantErr: "server.token_key is required",
 		},
@@ -115,9 +117,10 @@ log_level: invalid
 			name: "invalid mode",
 			config: `
 mode: unknown
-api_url: "http://127.0.0.1:8080/api/v1"
-ws_url: "ws://127.0.0.1:8080/ws/node"
-token_key: "test-key"
+server:
+  api_url: "http://127.0.0.1:8080/api/v1"
+  ws_url: "ws://127.0.0.1:8080/ws/node"
+  token_key: "test-key"
 `,
 			wantErr: "invalid mode",
 		},
