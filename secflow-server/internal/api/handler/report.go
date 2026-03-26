@@ -174,7 +174,7 @@ func (h *ReportHandler) ExportReport(c *gin.Context) {
 	// Generate report data
 	data, err := h.gen.GenerateReport(c.Request.Context(), config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to generate report: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate report"})
 		return
 	}
 
@@ -188,7 +188,7 @@ func (h *ReportHandler) ExportReport(c *gin.Context) {
 	// Export
 	content, filename, err := h.gen.ExportToFile(data, format)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to export report: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export report"})
 		return
 	}
 
@@ -269,13 +269,13 @@ func (h *ReportHandler) PreviewReport(c *gin.Context) {
 	// Generate report
 	data, err := h.gen.GenerateReport(c.Request.Context(), config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to generate report: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate report"})
 		return
 	}
 
 	content, _, err := h.gen.ExportToFile(data, report.FormatHTML)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to export report: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export report"})
 		return
 	}
 
@@ -311,7 +311,7 @@ func (h *ReportHandler) GetReportStats(c *gin.Context) {
 
 	stats, err := h.vulnRepo.GetStatsByDateRange(c.Request.Context(), dateFrom, dateTo, source)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get stats: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get report statistics"})
 		return
 	}
 
