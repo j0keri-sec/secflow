@@ -124,7 +124,8 @@ docker network create -d macvlan \
 ```bash
 # 网络配置
 SECFLOW_NETWORK=pub_net
-SECFLOW_NETWORK_EXTERNAL=true
+SECFLOW_NETWORK_SUBNET=172.16.100.0/24
+SECFLOW_NETWORK_GATEWAY=172.16.100.254
 
 # MongoDB
 MONGO_ROOT_USER=secflow
