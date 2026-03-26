@@ -211,11 +211,5 @@ volumes:
 #
 networks:
   secflow-net:
-    driver: bridge
-    name: ${SECFLOW_NETWORK:-secflow_dev_network}
-    enable_ipv6: false
-    ipam:
-      driver: default
-      config:
-        - subnet: ${SECFLOW_NETWORK_SUBNET:-172.16.100.0/24}
-          gateway: ${SECFLOW_NETWORK_GATEWAY:-172.16.100.254}
+    name: ${SECFLOW_NETWORK:-pub_net}
+    external: true
