@@ -58,29 +58,7 @@ db.operation_logs.createIndex({ 'operator': 1, 'created_at': -1 });
 db.operation_logs.createIndex({ 'action': 1, 'created_at': -1 });
 
 // ================================================
-// 2. 创建默认管理员账号
-// ================================================
-
-// 检查是否已存在管理员
-const adminExists = db.users.findOne({ username: 'admin' });
-if (!adminExists) {
-    // 默认密码: admin123 (生产环境请立即修改!)
-    db.users.insertOne({
-        username: 'admin',
-        password: '$2a$10$N9qo8uLOickgx2ZMRZoMye1J8g5vXZvQzQhK1xGQq3J3Qq3J3J3J3', // bcrypt hash of 'admin123'
-        role: 'admin',
-        email: 'admin@secflow.local',
-        created_at: new Date(),
-        updated_at: new Date(),
-        is_active: true
-    });
-    print('Default admin user created: admin / admin123');
-} else {
-    print('Admin user already exists, skipping...');
-}
-
-// ================================================
-// 3. 创建默认推送渠道模板
+// 2. 创建默认推送渠道模板
 // ================================================
 
 const pushChannelExists = db.push_channels.findOne({ type: 'dingtalk' });
@@ -115,7 +93,7 @@ if (!pushChannelExists) {
 }
 
 // ================================================
-// 4. 创建系统配置
+// 3. 创建系统配置
 // ================================================
 
 const configExists = db.system_config.findOne({ key: 'grabber' });
@@ -147,7 +125,7 @@ if (!configExists) {
 }
 
 // ================================================
-// 5. 输出完成信息
+// 4. 输出完成信息
 // ================================================
 
 print('===========================================');
@@ -155,6 +133,5 @@ print('SecFlow MongoDB 初始化完成');
 print('===========================================');
 print('数据库: secflow');
 print('集合: users, vuln_records, articles, tasks, nodes, push_channels, system_config, operation_logs');
-print('默认管理员: admin / admin123');
-print('请立即修改默认管理员密码!');
+print('请访问前端页面注册第一个管理员账号');
 print('===========================================');
